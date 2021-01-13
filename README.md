@@ -1,4 +1,4 @@
-![C/C++](whttps://github.com/edelsys/colibri/workflows/C/C++/badge.svg)
+![C/C++](https://github.com/edelsys/colibri/workflows/C/C++/badge.svg)
 
 # colibri
 
