@@ -1,0 +1,17 @@
+find_path(MUQUEUE_INCLUDE_DIR NAMES muqueue/muqueue.h)
+find_library(MUQUEUE_LIBRARIES NAMES muqueue)
+
+if(MUQUEUE_INCLUDE_DIR AND MUQUEUE_LIBRARIES)
+    set(MUQUEUE_FOUND ON)
+endif(MUQUEUE_INCLUDE_DIR AND MUQUEUE_LIBRARIES)
+
+if(MUQUEUE_FOUND)
+    if (NOT MUQUEUE_FIND_QUIETLY)
+        message(STATUS "Found muqueue includes: ${MUQUEUE_INCLUDE_DIR}/muqueue/muqueue.h")
+        message(STATUS "Found muqueue library: ${MUQUEUE_LIBRARIES}")
+    endif(NOT MUQUEUE_FIND_QUIETLY)
+else(MUQUEUE_FOUND)
+    if (MUQUEUE_FIND_REQUIRED)
+        message(FATAL_ERROR "Could not find muqueue development files")
+    endif (MUQUEUE_FIND_REQUIRED)
+endif (MUQUEUE_FOUND)

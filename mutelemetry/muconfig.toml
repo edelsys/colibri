@@ -1,0 +1,5 @@
+[mutelemetry]
+    with_local_log = true
+    with_network = true
+    log_directory_path = "/var/log/telemetry_logs"
+

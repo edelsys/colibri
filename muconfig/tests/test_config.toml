@@ -1,0 +1,18 @@
+################################################
+# TOML configuration file for testing MuConfig #
+################################################
+[muroute]
+    network_interface = "eth0"
+    [muroute.telemetry]
+        with_local_log = true
+        with_network = false
+        telemetry_port = 7711
+        log_directory_path = "/tmp/logs"
+
+[muflow]
+    [muflow.sparse_mem]
+        detector_threshold = 3.5
+
+[muqueue]
+    [muqueue.scheduler]
+        queue_capacity = 128

@@ -1,0 +1,3 @@
+[submodule "muroute/mavlink2"]
+	path = muroute/mavlink2
+	url = https://github.com/mavlink/c_library_v2.git
