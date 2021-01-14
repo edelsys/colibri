@@ -56,7 +56,7 @@ Prerequisites
 * clang-format (Ubuntu: sudo apt-get install libev-dev)
 
 See the [INSTALL](INSTALL.md) file for more detailed installation instructions.
-Please see the [examples](examples/) directory and the USAGE file for examples on how to use.
+Please see the [examples](examples/) and [doc](doc/) directories for examples on how to use.
 
 ## Features
 * Component subsytem
