@@ -1,7 +1,5 @@
 ![C/C++](https://github.com/edelsys/colibri/workflows/C/C++/badge.svg)
 
-# colibri
-
 ## Introduction
 The library provides an API for companion systems to communicate with MAVLink-based robotics systems.
 It can be used for example within obstacle avoidance, and route planning algorithms.
