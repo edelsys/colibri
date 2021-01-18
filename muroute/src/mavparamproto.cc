@@ -44,27 +44,6 @@ static size_t mem_copy(void *dest, size_t dsize, const void *src, size_t ssize,
   return ncopy;
 }
 
-void MavParamProto::send_mavlink_message(mavlink_message_t &msg,
-                                         int src_comp_id, int dst_sys_id,
-                                         int dst_comp_id) {
-  uint8_t buffer[MAX_MAVLINK_MESSAGE_SIZE];
-  uint8_t *data = buffer;
-  size_t len = mavlink_msg_to_send_buffer(data, &msg);
-  uint32_t src_sys_id = getRoster()->getMcastId();
-
-  if (len > 0) {
-    LOG(INFO) << "Sending from <" << src_sys_id << ":" << src_comp_id << "> to "
-              << "<" << dst_sys_id << ":" << dst_comp_id << ">";
-    const auto src = SparseAddress(src_sys_id, src_comp_id, 0);
-    auto dst = fflow::SparseAddress(dst_sys_id, dst_comp_id, 0);
-    getRoster()->__send(msg, src, {dst});
-  } else {
-    LOG(ERROR) << "Failed to send message from <" << src_sys_id << ":"
-               << src_comp_id << "> to "
-               << "<" << dst_sys_id << ":" << dst_comp_id << ">";
-  }
-}
-
 void MavParamProto::send_parameter_ext(int param_index, int src_comp_id,
                                        int dst_sys_id, int dst_comp_id) {
   RouteSystemPtr roster = getRoster();

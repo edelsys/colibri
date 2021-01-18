@@ -38,18 +38,14 @@
 
 namespace fflow {
 
-class MavParamProto : public IMavlinkProtocol {
+class MavParamProto : public BaseMavlinkProtocol {
   static constexpr size_t proto_table_len = 6;
-  fflow::RouteSystemPtr roster_;
 
  public:
   MavParamProto() = default;
   virtual ~MavParamProto() = default;
 
  public:
-  void setRoster(fflow::RouteSystemPtr roster) override { roster_ = roster; }
-  fflow::RouteSystemPtr getRoster() override { return roster_; }
-
   const fflow::message_handler_note_t *get_table() const {
     return &proto_table_[0];
   }
@@ -92,9 +88,6 @@ class MavParamProto : public IMavlinkProtocol {
        }}};
 
  protected:
-  void send_mavlink_message(mavlink_message_t &, int, int,
-                            int dest_comp_id = 0);
-
   void send_parameter(int, int, int, int dest_comp_id = 0);
   void send_parameter(const char *, int, int, int dest_comp_id = 0);
   void send_parameters(int, int, int dest_comp_id = 0);
@@ -123,9 +116,6 @@ class MavParamProto : public IMavlinkProtocol {
 
   bool decodeParameterValue(mavlink_param_value_t &, int,
                             const MavParams::ParamUnion &);
-
- protected:
-  static constexpr float epsilon = std::numeric_limits<float>::epsilon();
 };
 
 }  // namespace fflow

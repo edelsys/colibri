@@ -37,7 +37,7 @@ using namespace fflow;
 bool MediaComponentBus::init(RouteSystemPtr roster) {
   if (roster == nullptr) return false;
   setRoster(roster);
-  getRoster()->add_protocol2(proto_table_common, proto_table_common_len);
+  // add camera protocol
   getRoster()->add_protocol2(get_table(), get_table_len());
   return true;
 }
@@ -75,7 +75,11 @@ bool MediaComponentBus::handle_request_camera_info(
   mavlink_message_t msg;
   bool result = false;
 
-  if (std::abs(cmd.param1) <= epsilon) return true;
+  if (is_zero(cmd.param1)) {
+    send_ack(cmd.command, true, cmd.target_component, from.group_id,
+             from.instance_id);
+    return true;
+  }
 
   MediaComponentPtr cam_iface = getMediaComponent(cmd.target_component);
   if (cam_iface) {
@@ -159,8 +163,10 @@ pointprec_t MediaComponentBus::command_long_handler(uint8_t *payload,
   mavlink_msg_command_long_decode(msg, &cmd);
 
   uint8_t comp_id = cmd.target_component;
-  bool confirm = cmd.confirmation;
-  bool result = false;
+  if (comp_id < MAV_COMP_ID_CAMERA || comp_id > MAV_COMP_ID_CAMERA6) {
+    // comp_id not related to any camera, just exit silently
+    return 1.0;
+  }
 
   RouteSystemPtr roster = getRoster();
   if (!roster) {
@@ -170,6 +176,9 @@ pointprec_t MediaComponentBus::command_long_handler(uint8_t *payload,
 
   LOG(INFO) << "Command received: (sysid:" << cmd.target_system
             << " compid:" << comp_id << " msgid:" << cmd.command << ")";
+
+  bool confirm = cmd.confirmation;
+  bool result = false;
 
   if (!roster->getCBus().has_component(comp_id)) {
     LOG(INFO) << "Camera with ID=" << comp_id << " not present";
@@ -210,80 +219,8 @@ pointprec_t MediaComponentBus::command_long_handler(uint8_t *payload,
     }
   }
 
-  if (confirm) {
-    mavlink_message_t msg;
-
-    mavlink_msg_command_ack_pack(
-        uint8_t(roster->getMcastId()) /*system_id*/,
-        uint8_t(comp_id) /* our own component_id*/, &msg /*msg*/,
-        cmd.command /*command*/,
-        result ? MAV_RESULT_ACCEPTED : MAV_RESULT_FAILED, 0 /*progress*/,
-        0 /*result_param2*/, uint8_t(roster->getMcastId()) /*target_system*/,
-        from.instance_id /* target_component */);
-
-    send_mavlink_message(msg, comp_id, from.instance_id);
-  }
-
-  return 1.0;
-}
-
-pointprec_t MediaComponentBus::param_request_read_handler(
-    uint8_t *payload, size_t /*len*/, SparseAddress /*sa*/,
-    fflow::BaseComponentPtr /*comp*/) {
-  mavlink_message_t *msg = MAVPAYLOAD_TO_MAVMSG(payload);
-  mavlink_param_request_read_t pread;
-
-  mavlink_msg_param_request_read_decode(msg, &pread);
-
-  uint8_t comp_id = pread.target_component;
-  uint8_t sys_id = pread.target_system;
-
-  LOG(INFO) << "MediaComponentBus::request_read_handler() ===> sysid:"
-            << static_cast<int>(sys_id)
-            << " compid:" << static_cast<int>(comp_id) << " param:\""
-            << pread.param_id << "\"";
-
-  // TODO:
-
-  return 1.0;
-}
-
-pointprec_t MediaComponentBus::param_request_list_handler(
-    uint8_t *payload, size_t /*len*/, SparseAddress /*sa*/,
-    fflow::BaseComponentPtr /*comp*/) {
-  mavlink_message_t *msg = MAVPAYLOAD_TO_MAVMSG(payload);
-  mavlink_param_request_list_t plist;
-
-  mavlink_msg_param_request_list_decode(msg, &plist);
-
-  uint8_t comp_id = plist.target_component;
-  uint8_t sys_id = plist.target_system;
-
-  LOG(INFO) << "MediaComponentBus::request_list_handler() ===> sysid:"
-            << static_cast<int>(sys_id)
-            << " compid:" << static_cast<int>(comp_id);
-
-  // TODO:
-
-  return 1.0;
-}
-
-pointprec_t MediaComponentBus::param_set_handler(
-    uint8_t *payload, size_t /*len*/, SparseAddress /*sa*/,
-    fflow::BaseComponentPtr /*comp*/) {
-  mavlink_message_t *msg = MAVPAYLOAD_TO_MAVMSG(payload);
-
-  mavlink_param_set_t pset;
-  mavlink_msg_param_set_decode(msg, &pset);
-
-  uint8_t comp_id = pset.target_component;
-  uint8_t sys_id = pset.target_system;
-
-  LOG(INFO) << "MediaComponentBus::request_list_handler() ===> sysid:"
-            << static_cast<int>(sys_id)
-            << " compid:" << static_cast<int>(comp_id);
-
-  // TODO:
+  if (confirm)
+    send_ack(cmd.command, result, comp_id, from.group_id, from.instance_id);
 
   return 1.0;
 }
@@ -297,7 +234,7 @@ bool MediaComponentBus::addMediaComponent(MediaComponentPtr cam_comp) {
     while (compid <= MAV_COMP_ID_CAMERA6) {
       if (!roster->getCBus().has_component(compid)) {
         cam_comp->setId(static_cast<uint8_t>(compid));
-        cam_comp->setRoster(getRoster());
+        cam_comp->setRoster(roster);
         ret = roster->getCBus().add_component(cam_comp);
         break;
       }

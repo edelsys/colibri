@@ -114,12 +114,12 @@ class MediaComponent : public fflow::BaseComponent {
   }
 
  public:
-  virtual const MediaInfo &getInfo() {
+  const MediaInfo &getInfo() {
     // FIXME: must be an array for several streams
     return minfo_;
   }
 
-  virtual const MediaCapsInfo &getCapsInfo() { return mcinfo_; }
+  const MediaCapsInfo &getCapsInfo() { return mcinfo_; }
 
   virtual bool onStartStream(const fflow::SparseAddress &from) = 0;
   virtual bool onStopStream(const fflow::SparseAddress &from) = 0;
@@ -142,7 +142,6 @@ class MediaComponent : public fflow::BaseComponent {
  protected:
   MediaInfo minfo_;
   MediaCapsInfo mcinfo_;
-  fflow::MavParams params_;
 
  private:
   bool rgbEnabled_ = false;
@@ -156,7 +155,7 @@ typedef MediaComponent *MediaComponentPtr;
  *
  *
  */
-class MediaComponentBus : public fflow::MavParamProto {
+class MediaComponentBus : public fflow::BaseMavlinkProtocol {
  public:
   MediaComponentBus() : timeout_handler_(0) {}
   ~MediaComponentBus() {}
@@ -167,17 +166,23 @@ class MediaComponentBus : public fflow::MavParamProto {
   void removeMediaComponent(int);
   MediaComponentPtr getMediaComponent(int);
 
+  const fflow::message_handler_note_t *get_table() const {
+    return &proto_table_[0];
+  }
+
+  size_t get_table_len() const { return proto_table_len; }
+
   bool start();
   void stop();
 
  private:
-  static constexpr size_t proto_table_common_len = 1;
+  static constexpr size_t proto_table_len = 1;
 
  private:
   unsigned int timeout_handler_;
   std::map<int, fflow::AsyncERQPtr> idToErqHandle_;
 
-  fflow::message_handler_note_t proto_table_common[proto_table_common_len] = {
+  fflow::message_handler_note_t proto_table_[proto_table_len] = {
       {MAVLINK_MSG_ID_COMMAND_LONG,
        [this](uint8_t *a, size_t b, fflow::SparseAddress c,
               fflow::BaseComponentPtr /*cc*/) -> fflow::pointprec_t {
@@ -195,13 +200,4 @@ class MediaComponentBus : public fflow::MavParamProto {
                                     const fflow::SparseAddress &);
   bool handle_video_stop_streaming(const mavlink_command_long_t &,
                                    const fflow::SparseAddress &);
-
-  fflow::pointprec_t param_request_read_handler(
-      uint8_t *, size_t, fflow::SparseAddress,
-      fflow::BaseComponentPtr) override;
-  fflow::pointprec_t param_request_list_handler(
-      uint8_t *, size_t, fflow::SparseAddress,
-      fflow::BaseComponentPtr) override;
-  fflow::pointprec_t param_set_handler(uint8_t *, size_t, fflow::SparseAddress,
-                                       fflow::BaseComponentPtr) override;
 };

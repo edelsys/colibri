@@ -47,6 +47,49 @@ namespace fflow {
 
 /// ************************************************************************************************
 
+void BaseMavlinkProtocol::send_ack(int cmd, bool result, int src_comp_id,
+                                   int dst_sys_id, int dst_comp_id) {
+  mavlink_message_t msg;
+
+  if (nullptr == roster_) {
+    assert(0);
+    return;
+  }
+
+  mavlink_msg_command_ack_pack(roster_->getMcastId(), src_comp_id, &msg, cmd,
+                               result ? MAV_RESULT_ACCEPTED : MAV_RESULT_FAILED,
+                               0, 0, dst_sys_id, dst_comp_id);
+
+  send_mavlink_message(msg, src_comp_id, dst_sys_id, dst_sys_id);
+}
+
+void BaseMavlinkProtocol::send_mavlink_message(mavlink_message_t &msg,
+                                               int src_comp_id, int dst_sys_id,
+                                               int dst_comp_id) {
+  uint8_t buffer[MAX_MAVLINK_MESSAGE_SIZE];
+  uint8_t *data = buffer;
+
+  if (nullptr == roster_) {
+    assert(0);
+    return;
+  }
+
+  size_t len = mavlink_msg_to_send_buffer(data, &msg);
+  uint32_t src_sys_id = roster_->getMcastId();
+
+  if (len > 0) {
+    LOG(INFO) << "Sending from <" << src_sys_id << ":" << src_comp_id << "> to "
+              << "<" << dst_sys_id << ":" << dst_comp_id << ">";
+    const auto src = SparseAddress(src_sys_id, src_comp_id, 0);
+    auto dst = fflow::SparseAddress(dst_sys_id, dst_comp_id, 0);
+    roster_->__send(msg, src, {dst});
+  } else {
+    LOG(ERROR) << "Failed to send message from <" << src_sys_id << ":"
+               << src_comp_id << "> to "
+               << "<" << dst_sys_id << ":" << dst_comp_id << ">";
+  }
+}
+
 const char RouteSystem::PARAMETER_FORWARDING[] = "Forwarding";
 
 /// ************************************************

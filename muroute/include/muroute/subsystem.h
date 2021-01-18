@@ -72,15 +72,30 @@ typedef std::tuple<uint32_t, native_addr_t,
     route_row_t;
 
 /// ////////////////////////////////////
-/// \brief The IMavlinkProtocol class
+/// \brief The BaseMavlinkProtocol class
 ///
-class IMavlinkProtocol {
+class BaseMavlinkProtocol {
+  static constexpr float eps = std::numeric_limits<float>::epsilon();
+
  public:
-  virtual ~IMavlinkProtocol() {}
-  virtual void setRoster(fflow::RouteSystemPtr) = 0;
-  virtual fflow::RouteSystemPtr getRoster() = 0;
+  BaseMavlinkProtocol() = default;
+  BaseMavlinkProtocol(fflow::RouteSystemPtr roster) : roster_(roster) {}
+  virtual ~BaseMavlinkProtocol() = default;
+
+  bool is_zero(float val) { return std::abs(val) <= eps; }
+
+  void setRoster(fflow::RouteSystemPtr roster) { roster_ = roster; }
+  fflow::RouteSystemPtr getRoster() { return roster_; }
+
+  void send_ack(int, bool, int, int, int dest_comp_id = 0);
+  void send_mavlink_message(mavlink_message_t &, int, int,
+                            int dest_comp_id = 0);
+
   virtual const fflow::message_handler_note_t *get_table() const = 0;
   virtual size_t get_table_len() const = 0;
+
+ private:
+  fflow::RouteSystemPtr roster_;
 };
 
 /// ////////////////////////////////////
@@ -89,7 +104,7 @@ class IMavlinkProtocol {
 class RouteSystem final : public BaseComponent {
   // these are using __send()
   friend class BaseComponent;
-  friend class MavParamProto;
+  friend class BaseMavlinkProtocol;
 
   class BridgeComponent : public BaseComponent {
    public:
@@ -197,7 +212,7 @@ class RouteSystem final : public BaseComponent {
       all_msg_handlers;
 
   /// < default protocols (microservices)
-  std::unique_ptr<IMavlinkProtocol> param_proto;
+  std::unique_ptr<BaseMavlinkProtocol> param_proto;
 
   /// < local components list (loopback)
   //  std::unordered_set<uint32_t>
