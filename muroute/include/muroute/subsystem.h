@@ -82,17 +82,17 @@ class BaseMavlinkProtocol {
   BaseMavlinkProtocol(fflow::RouteSystemPtr roster) : roster_(roster) {}
   virtual ~BaseMavlinkProtocol() = default;
 
-  bool is_zero(float val) { return std::abs(val) <= eps; }
-
   void setRoster(fflow::RouteSystemPtr roster) { roster_ = roster; }
   fflow::RouteSystemPtr getRoster() { return roster_; }
 
+  virtual const fflow::message_handler_note_t *get_table() const = 0;
+  virtual size_t get_table_len() const = 0;
+
+ protected:
   void send_ack(int, bool, int, int, int dest_comp_id = 0);
   void send_mavlink_message(mavlink_message_t &, int, int,
                             int dest_comp_id = 0);
-
-  virtual const fflow::message_handler_note_t *get_table() const = 0;
-  virtual size_t get_table_len() const = 0;
+  bool is_zero(float val) { return std::abs(val) <= eps; }
 
  private:
   fflow::RouteSystemPtr roster_;

@@ -35,6 +35,7 @@
 
 #include <iostream>
 #include <map>
+#include <vector>
 
 // clang-format off
 enum class InputType : uint8_t {
@@ -88,7 +89,6 @@ struct MediaCapsInfo {
  *
  */
 struct MediaInfo {
- public:
   int status;
   int width;
   int height;
@@ -106,20 +106,31 @@ struct MediaInfo {
  */
 class MediaComponent : public fflow::BaseComponent {
  public:
-  MediaComponent() = default;
+  MediaComponent() { minfo_.clear(); }
   MediaComponent(uint8_t id) {
+    minfo_.clear();
     if (id >= MAV_COMP_ID_CAMERA && id <= MAV_COMP_ID_CAMERA6) setId(id);
   }
+
   virtual ~MediaComponent() { /* stop(); */
   }
 
  public:
-  const MediaInfo &getInfo() {
-    // FIXME: must be an array for several streams
-    return minfo_;
+  size_t getInfoSize() const { return minfo_.size(); }
+
+  MediaInfo *getInfo(size_t idx) {
+    MediaInfo *result = nullptr;
+
+    try {
+      result = &minfo_.at(idx);
+    } catch (const std::out_of_range &) {
+      LOG(ERROR) << "No stream with index " << idx;
+    }
+
+    return result;
   }
 
-  const MediaCapsInfo &getCapsInfo() { return mcinfo_; }
+  const MediaCapsInfo &getCapsInfo() const { return mcinfo_; }
 
   virtual bool onStartStream(const fflow::SparseAddress &from) = 0;
   virtual bool onStopStream(const fflow::SparseAddress &from) = 0;
@@ -140,7 +151,7 @@ class MediaComponent : public fflow::BaseComponent {
   }
 
  protected:
-  MediaInfo minfo_;
+  std::vector<MediaInfo> minfo_;
   MediaCapsInfo mcinfo_;
 
  private:
@@ -164,13 +175,14 @@ class MediaComponentBus : public fflow::BaseMavlinkProtocol {
   bool init(fflow::RouteSystemPtr);
   bool addMediaComponent(MediaComponentPtr);
   void removeMediaComponent(int);
+  void removeMediaComponent(MediaComponentPtr);
   MediaComponentPtr getMediaComponent(int);
 
-  const fflow::message_handler_note_t *get_table() const {
+  const fflow::message_handler_note_t *get_table() const override {
     return &proto_table_[0];
   }
 
-  size_t get_table_len() const { return proto_table_len; }
+  size_t get_table_len() const override { return proto_table_len; }
 
   bool start();
   void stop();

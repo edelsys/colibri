@@ -72,7 +72,6 @@ void MediaComponentBus::stop() {
 
 bool MediaComponentBus::handle_request_camera_info(
     const mavlink_command_long_t &cmd, const fflow::SparseAddress &from) {
-  mavlink_message_t msg;
   bool result = false;
 
   if (is_zero(cmd.param1)) {
@@ -82,8 +81,16 @@ bool MediaComponentBus::handle_request_camera_info(
   }
 
   MediaComponentPtr cam_iface = getMediaComponent(cmd.target_component);
-  if (cam_iface) {
+  if (cam_iface) result = true;
+
+  send_ack(cmd.command, result, cmd.target_component, from.group_id,
+           from.instance_id);
+  this_thread::sleep_for(chrono::milliseconds(100));
+
+  if (result) {
     const MediaCapsInfo &mcinfo = cam_iface->getCapsInfo();
+    mavlink_message_t msg;
+
     mavlink_msg_camera_information_pack(
         getRoster()->getMcastId(), cmd.target_component, &msg,
         uint32_t(1000 * mcinfo.time_boot_ms),
@@ -94,9 +101,7 @@ bool MediaComponentBus::handle_request_camera_info(
         uint8_t(mcinfo.lens_id), mcinfo.flags, mcinfo.cam_definition_version,
         mcinfo.cam_definition_uri.c_str());
 
-    // this_thread::sleep_for(chrono::milliseconds(200));
     send_mavlink_message(msg, cmd.target_component, from.instance_id);
-    result = true;
   }
 
   return result;
@@ -104,27 +109,59 @@ bool MediaComponentBus::handle_request_camera_info(
 
 bool MediaComponentBus::handle_request_video_stream_info(
     const mavlink_command_long_t &cmd, const fflow::SparseAddress &from) {
-  mavlink_message_t msg;
   bool result = false;
 
   MediaComponent *cam_iface = getMediaComponent(cmd.target_component);
   if (cam_iface) {
-    uint8_t stream_num = static_cast<uint8_t>(std::abs(cmd.param1));
-    const MediaInfo &minfo = cam_iface->getInfo();
-    if (stream_num > 0) {
-      mavlink_msg_video_stream_information_pack(
-          getRoster()->getMcastId(), cmd.target_component, &msg,
-          cmd.target_component, 5, VIDEO_STREAM_TYPE_MPEG_TS_H264, minfo.status,
-          minfo.fps, minfo.width, minfo.height, minfo.bitrate, 0, 90,
-          "Stream name", minfo.uri.c_str());
+    size_t stream_idx = static_cast<size_t>(std::abs(cmd.param1));
+    if (stream_idx > 0) {
+      MediaInfo *minfo = cam_iface->getInfo(--stream_idx);
+      if (minfo) result = true;
 
-      // this_thread::sleep_for(chrono::milliseconds(200));
-      send_mavlink_message(msg, cmd.target_component, from.instance_id);
+      send_ack(cmd.command, result, cmd.target_component, from.group_id,
+               from.instance_id);
+      this_thread::sleep_for(chrono::milliseconds(100));
+
+      if (result) {
+        mavlink_message_t msg;
+
+        mavlink_msg_video_stream_information_pack(
+            getRoster()->getMcastId(), cmd.target_component, &msg,
+            cmd.target_component, 5, VIDEO_STREAM_TYPE_MPEG_TS_H264,
+            minfo->status, minfo->fps, minfo->width, minfo->height,
+            minfo->bitrate, 0, 90, minfo->name.c_str(), minfo->uri.c_str());
+
+        send_mavlink_message(msg, cmd.target_component, from.instance_id);
+      }
     } else {
-      // TODO:
-      assert(0);
+      size_t sz = cam_iface->getInfoSize();
+
+      if (sz > 0) result = true;
+
+      send_ack(cmd.command, result, cmd.target_component, from.group_id,
+               from.instance_id);
+      this_thread::sleep_for(chrono::milliseconds(100));
+
+      if (result) {
+        for (size_t i = 0; i < sz; ++i) {
+          MediaInfo *minfo = cam_iface->getInfo(i);
+          if (minfo) {
+            mavlink_message_t msg;
+
+            mavlink_msg_video_stream_information_pack(
+                getRoster()->getMcastId(), cmd.target_component, &msg,
+                cmd.target_component, 5, VIDEO_STREAM_TYPE_MPEG_TS_H264,
+                minfo->status, minfo->fps, minfo->width, minfo->height,
+                minfo->bitrate, 0, 90, minfo->name.c_str(), minfo->uri.c_str());
+
+            send_mavlink_message(msg, cmd.target_component, from.instance_id);
+          }
+        }
+      }
     }
-    result = true;
+  } else {
+    send_ack(cmd.command, false, cmd.target_component, from.group_id,
+             from.instance_id);
   }
 
   return result;
@@ -177,7 +214,6 @@ pointprec_t MediaComponentBus::command_long_handler(uint8_t *payload,
   LOG(INFO) << "Command received: (sysid:" << cmd.target_system
             << " compid:" << comp_id << " msgid:" << cmd.command << ")";
 
-  bool confirm = cmd.confirmation;
   bool result = false;
 
   if (!roster->getCBus().has_component(comp_id)) {
@@ -187,7 +223,6 @@ pointprec_t MediaComponentBus::command_long_handler(uint8_t *payload,
       case MAV_CMD_REQUEST_CAMERA_INFORMATION:
         result = handle_request_camera_info(cmd, from);
         break;
-        //    case MAV_CMD_REQUEST_MESSAGE:
       case MAV_CMD_REQUEST_VIDEO_STREAM_INFORMATION:
         result = handle_request_video_stream_info(cmd, from);
         break;
@@ -199,33 +234,33 @@ pointprec_t MediaComponentBus::command_long_handler(uint8_t *payload,
         break;
       // NI
       case MAV_CMD_REQUEST_CAMERA_SETTINGS:
+      case MAV_CMD_SET_CAMERA_MODE:
       case MAV_CMD_REQUEST_CAMERA_CAPTURE_STATUS:
       case MAV_CMD_RESET_CAMERA_SETTINGS:
       case MAV_CMD_REQUEST_STORAGE_INFORMATION:
       case MAV_CMD_STORAGE_FORMAT:
-      case MAV_CMD_SET_CAMERA_MODE:
       case MAV_CMD_IMAGE_START_CAPTURE:
       case MAV_CMD_IMAGE_STOP_CAPTURE:
       case MAV_CMD_VIDEO_START_CAPTURE:
       case MAV_CMD_VIDEO_STOP_CAPTURE:
       case MAV_CMD_REQUEST_CAMERA_IMAGE_CAPTURE:
       case MAV_CMD_DO_TRIGGER_CONTROL:
-        LOG(INFO) << "Camera command" << cmd.command << " unsupported";
+        if (!is_zero(cmd.param1)) {
+          send_ack(cmd.command, false, cmd.target_component, from.group_id,
+                   from.instance_id);
+        }
+        LOG(INFO) << "Camera command not " << cmd.command << " supported";
         break;
       default:
         LOG(INFO) << "Command " << cmd.command << " unhandled";
-        confirm = false;  // cancel confirmation
         break;
     }
   }
 
-  if (confirm)
-    send_ack(cmd.command, result, comp_id, from.group_id, from.instance_id);
-
   return 1.0;
 }
 
-bool MediaComponentBus::addMediaComponent(MediaComponentPtr cam_comp) {
+bool MediaComponentBus::addMediaComponent(MediaComponentPtr comp) {
   int compid = MAV_COMP_ID_CAMERA;
   RouteSystemPtr roster = getRoster();
   bool ret = false;
@@ -233,9 +268,9 @@ bool MediaComponentBus::addMediaComponent(MediaComponentPtr cam_comp) {
   if (roster) {
     while (compid <= MAV_COMP_ID_CAMERA6) {
       if (!roster->getCBus().has_component(compid)) {
-        cam_comp->setId(static_cast<uint8_t>(compid));
-        cam_comp->setRoster(roster);
-        ret = roster->getCBus().add_component(cam_comp);
+        comp->setId(static_cast<uint8_t>(compid));
+        comp->setRoster(roster);
+        ret = roster->getCBus().add_component(comp);
         break;
       }
       compid++;
@@ -248,6 +283,11 @@ bool MediaComponentBus::addMediaComponent(MediaComponentPtr cam_comp) {
 void MediaComponentBus::removeMediaComponent(int comp_id) {
   RouteSystemPtr roster = getRoster();
   if (roster) roster->getCBus().remove_component(comp_id);
+}
+
+void MediaComponentBus::removeMediaComponent(MediaComponentPtr comp) {
+  RouteSystemPtr roster = getRoster();
+  if (roster) roster->getCBus().remove_component(comp->getId());
 }
 
 MediaComponentPtr MediaComponentBus::getMediaComponent(int comp_id) {
