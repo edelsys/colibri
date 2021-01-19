@@ -82,13 +82,13 @@ struct MediaCapsInfo {
 
 /** -----------------------------------
  *
- * @brief The MediaInfo struct
+ * @brief The StreamInfo struct
  *
  * @todo Make this universal between video, audio or other media.
  * @todo Use k/v like structure
  *
  */
-struct MediaInfo {
+struct StreamInfo {
   int status;
   int width;
   int height;
@@ -118,8 +118,8 @@ class MediaComponent : public fflow::BaseComponent {
  public:
   size_t getInfoSize() const { return minfo_.size(); }
 
-  MediaInfo *getInfo(size_t idx) {
-    MediaInfo *result = nullptr;
+  StreamInfo *getInfo(size_t idx) {
+    StreamInfo *result = nullptr;
 
     try {
       result = &minfo_.at(idx);
@@ -139,19 +139,10 @@ class MediaComponent : public fflow::BaseComponent {
   bool getRgbEnabled() const { return rgbEnabled_; }
   void setRgbEnabled(bool rgbEnabled) { rgbEnabled_ = rgbEnabled; }
 
-  bool startImpl() override {
-    std::cout << "MediaComponent starting => id=" << static_cast<int>(getId())
-              << std::endl;
-    return true;
-  }
-
-  void stopImpl() override {
-    std::cout << "MediaComponent stoppping => id=" << static_cast<int>(getId())
-              << std::endl;
-  }
-
  protected:
-  std::vector<MediaInfo> minfo_;
+  // streaming capabilities
+  std::vector<StreamInfo> minfo_;
+  // camera information
   MediaCapsInfo mcinfo_;
 
  private:
@@ -162,14 +153,14 @@ typedef MediaComponent *MediaComponentPtr;
 
 /** ------------------------------------
  *
- * @brief The MediaComponentBus class
+ * @brief The VideoServer class
  *
  *
  */
-class MediaComponentBus : public fflow::BaseMavlinkProtocol {
+class VideoServer : public fflow::BaseMavlinkProtocol {
  public:
-  MediaComponentBus() : timeout_handler_(0) {}
-  ~MediaComponentBus() {}
+  VideoServer() : n_inuse(0), timeout_handler_(0) {}
+  virtual ~VideoServer();
 
  public:
   bool init(fflow::RouteSystemPtr);
@@ -191,6 +182,7 @@ class MediaComponentBus : public fflow::BaseMavlinkProtocol {
   static constexpr size_t proto_table_len = 1;
 
  private:
+  uint8_t n_inuse;
   unsigned int timeout_handler_;
   std::map<int, fflow::AsyncERQPtr> idToErqHandle_;
 
