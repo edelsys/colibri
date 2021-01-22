@@ -30,6 +30,7 @@
 #pragma once
 
 #include <muroute/componentbus.h>
+#include <muroute/concqueue.h>
 #include <muroute/mavlink2/common/mavlink.h>
 #include <muroute/mavparamproto.h>
 
@@ -37,6 +38,8 @@
 #include <map>
 #include <memory>
 #include <vector>
+
+#include <opencv2/opencv.hpp>
 
 /** -----------------------------------
  *
@@ -96,10 +99,14 @@ class Stream {
  public:
   Stream() : erq_handle_(nullptr), running_(false) {}
   Stream(const StreamInfo &info)
-      : info_(info), erq_handle_(nullptr), running_(false) {}
+      : erq_handle_(nullptr), running_(false), info_(info) {}
   virtual ~Stream() { stop(); }
 
   bool is_running() const { return running_; }
+  const ConcRingBuffer<std::shared_ptr<cv::Mat>> &getRgbBuffer() const {
+    return rgb_buff_;
+  }
+  ConcRingBuffer<std::shared_ptr<cv::Mat>> &getRgbBuffer() { return rgb_buff_; }
 
   uint8_t getStreamType() const { return info_.type_; }
   void setStreamType(uint8_t type) { info_.type_ = type; }
@@ -126,9 +133,10 @@ class Stream {
   void stop();
 
  private:
-  StreamInfo info_;
   fflow::AsyncERQPtr erq_handle_;
   bool running_;
+  StreamInfo info_;
+  ConcRingBuffer<std::shared_ptr<cv::Mat>> rgb_buff_;
 
  public:
   static StreamPtr createStream() { return std::make_shared<Stream>(); }
@@ -172,6 +180,7 @@ class MediaComponent : public fflow::BaseComponent {
   bool stopStream(uint8_t);
 
  protected:
+  // may be used for starting, for example, a preprocessing thread
   virtual bool onStartStream(const StreamPtr &) { return true; }
   virtual bool onStopStream(const StreamPtr &) { return true; }
 

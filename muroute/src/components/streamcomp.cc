@@ -36,7 +36,9 @@ using namespace fflow;
 
 bool Stream::start() {
   if (running_) return true;
-  // TODO: erq_handle_
+
+  // TODO: launch stream thread here
+
   running_ = true;
   return true;
 }
@@ -85,7 +87,12 @@ bool MediaComponent::startStream(uint8_t stream_id) {
   bool result = false;
   const StreamPtr stream = getStream(stream_id);
   if (stream) {
-    if (onStartStream(stream)) result = stream->start();
+    if (onStartStream(stream)) {
+      result = stream->start();
+      if (result)
+        LOG(INFO) << "Video stream with id=" << static_cast<int>(stream_id)
+                  << " has started";
+    }
   }
   return result;
 }
@@ -94,10 +101,11 @@ bool MediaComponent::stopStream(uint8_t stream_id) {
   bool result = false;
   const StreamPtr stream = getStream(stream_id);
   if (stream) {
-    if (onStopStream(stream)) {
-      stream->stop();
-      result = true;
-    }
+    stream->stop();
+    result = onStopStream(stream);
+    if (result)
+      LOG(INFO) << "Video stream with id=" << static_cast<int>(stream_id)
+                << " has stopped";
   }
   return result;
 }
