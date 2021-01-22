@@ -35,22 +35,8 @@
 
 #include <iostream>
 #include <map>
+#include <memory>
 #include <vector>
-
-// clang-format off
-enum class InputType : uint8_t {
-  RS2_D435I     = 1 << 0,
-  RS2_T265      = 1 << 1,
-  V4L2          = 1 << 2,
-  SIM           = 1 << 3,
-  RSRVD1        = 1 << 4,
-  RSRVD2        = 1 << 5,
-  RSRVD3        = 1 << 6,
-  RSRVD4        = 1 << 7,
-  RS            = (RS2_D435I|RS2_T265),
-  UNDEF         = 0
-};
-// clang-format on
 
 /** -----------------------------------
  *
@@ -84,20 +70,75 @@ struct MediaCapsInfo {
  *
  * @brief The StreamInfo struct
  *
- * @todo Make this universal between video, audio or other media.
- * @todo Use k/v like structure
- *
  */
 struct StreamInfo {
-  int status;
-  int width;
-  int height;
-  InputType type;
-  float bitrate;
-  float fps;
-  std::string name;
-  std::string uri;
+  uint8_t type_ = VIDEO_STREAM_TYPE_MPEG_TS_H264;
+  uint16_t flags_ = VIDEO_STREAM_STATUS_FLAGS_RUNNING;
+  float framerate_ = 30.0;
+  uint16_t resolution_h_ = 424;
+  uint16_t resolution_w_ = 240;
+  uint32_t bitrate_ = 424 * 240 * 4 * 8 * 30;
+  uint16_t rotation_ = 0;
+  uint16_t hfov_ = 90;
+  std::string name_ = "Unknown";
+  std::string uri_;
 };
+
+class Stream;
+using StreamPtr = std::shared_ptr<Stream>;
+
+/** -----------------------------------
+ *
+ * @brief The Stream class
+ *
+ */
+class Stream {
+ public:
+  Stream() : erq_handle_(nullptr), running_(false) {}
+  Stream(const StreamInfo &info)
+      : info_(info), erq_handle_(nullptr), running_(false) {}
+  virtual ~Stream() { stop(); }
+
+  bool is_running() const { return running_; }
+
+  uint8_t getStreamType() const { return info_.type_; }
+  void setStreamType(uint8_t type) { info_.type_ = type; }
+  uint16_t getStreamFlags() const { return info_.flags_; }
+  void setStreamFlags(uint16_t flags) { info_.flags_ = flags; }
+  float getStreamFramerate() const { return info_.framerate_; }
+  void setStreamFramerate(float framerate) { info_.framerate_ = framerate; }
+  uint16_t getStreamHeight() const { return info_.resolution_h_; }
+  void setStreamHeight(uint16_t h) { info_.resolution_h_ = h; }
+  uint16_t getStreamWidth() const { return info_.resolution_w_; }
+  void setStreamWidth(uint16_t w) { info_.resolution_w_ = w; }
+  uint32_t getStreamBitrate() const { return info_.bitrate_; }
+  void setStreamBitrate(uint32_t bitrate) { info_.bitrate_ = bitrate; }
+  uint16_t getStreamRotation() const { return info_.rotation_; }
+  void setStreamRotattion(uint16_t rotation) { info_.rotation_ = rotation; }
+  uint16_t getStreamHFov() const { return info_.hfov_; }
+  void setStreamHFov(uint16_t) { info_.hfov_; }
+  const std::string &getStreamName() const { return info_.name_; }
+  void setStreamName(const std::string &name) { info_.name_ = name; }
+  const std::string &getStreamURI() const { return info_.uri_; }
+  void setStreamURI(const std::string &uri) { info_.uri_ = uri; }
+
+  bool start();
+  void stop();
+
+ private:
+  StreamInfo info_;
+  fflow::AsyncERQPtr erq_handle_;
+  bool running_;
+
+ public:
+  static StreamPtr createStream() { return std::make_shared<Stream>(); }
+
+  static StreamPtr createStream(const StreamInfo &info) {
+    return std::make_shared<Stream>(info);
+  }
+};
+
+using StreamPtr = std::shared_ptr<Stream>;
 
 /** ------------------------------------
  *
@@ -106,9 +147,9 @@ struct StreamInfo {
  */
 class MediaComponent : public fflow::BaseComponent {
  public:
-  MediaComponent() { minfo_.clear(); }
+  MediaComponent() { streams_.clear(); }
   MediaComponent(uint8_t id) {
-    minfo_.clear();
+    streams_.clear();
     if (id >= MAV_COMP_ID_CAMERA && id <= MAV_COMP_ID_CAMERA6) setId(id);
   }
 
@@ -116,37 +157,28 @@ class MediaComponent : public fflow::BaseComponent {
   }
 
  public:
-  size_t getInfoSize() const { return minfo_.size(); }
+  size_t getNumberOfStreams() const { return streams_.size(); }
 
-  StreamInfo *getInfo(size_t idx) {
-    StreamInfo *result = nullptr;
+  const MediaCapsInfo &getCapsInfo() const { return cinfo_; }
+  void setCapsInfo(const MediaCapsInfo &cinfo) { cinfo_ = cinfo; }
 
-    try {
-      result = &minfo_.at(idx);
-    } catch (const std::out_of_range &) {
-      LOG(ERROR) << "No stream with index " << idx;
-    }
-
-    return result;
-  }
-
-  const MediaCapsInfo &getCapsInfo() const { return mcinfo_; }
-
-  virtual bool onStartStream(const fflow::SparseAddress &from) = 0;
-  virtual bool onStopStream(const fflow::SparseAddress &from) = 0;
-
- public:
   bool getRgbEnabled() const { return rgbEnabled_; }
   void setRgbEnabled(bool rgbEnabled) { rgbEnabled_ = rgbEnabled; }
 
+  const StreamPtr getStream(size_t);
+  int registerStream(const StreamInfo &);
+  int registerStream(const StreamPtr);
+  bool startStream(uint8_t);
+  bool stopStream(uint8_t);
+
  protected:
-  // streaming capabilities
-  std::vector<StreamInfo> minfo_;
-  // camera information
-  MediaCapsInfo mcinfo_;
+  virtual bool onStartStream(const StreamPtr &) { return true; }
+  virtual bool onStopStream(const StreamPtr &) { return true; }
 
  private:
   bool rgbEnabled_ = false;
+  std::vector<StreamPtr> streams_;
+  MediaCapsInfo cinfo_;
 };
 
 typedef MediaComponent *MediaComponentPtr;
@@ -159,7 +191,7 @@ typedef MediaComponent *MediaComponentPtr;
  */
 class VideoServer : public fflow::BaseMavlinkProtocol {
  public:
-  VideoServer() : n_inuse(0), timeout_handler_(0) {}
+  VideoServer() : n_inuse_(0), timeout_handler_(0) {}
   virtual ~VideoServer();
 
  public:
@@ -182,9 +214,8 @@ class VideoServer : public fflow::BaseMavlinkProtocol {
   static constexpr size_t proto_table_len = 1;
 
  private:
-  uint8_t n_inuse;
+  uint8_t n_inuse_;
   unsigned int timeout_handler_;
-  std::map<int, fflow::AsyncERQPtr> idToErqHandle_;
 
   fflow::message_handler_note_t proto_table_[proto_table_len] = {
       {MAVLINK_MSG_ID_COMMAND_LONG,
