@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2020, EDEL LLC <http://www.edelsys.com>
  * All Rights Reserved
  *
@@ -34,6 +34,82 @@
 using namespace std;
 using namespace fflow;
 
+bool Stream::start() {
+  if (running_) return true;
+
+  // TODO: launch stream thread here
+
+  running_ = true;
+  return true;
+}
+
+void Stream::stop() {
+  if (running_) {
+    // TODO:
+    AsyncController *async_controller = nullptr;
+    if (erq_handle_) erq_handle_->removeFrom(async_controller);
+    running_ = false;
+  }
+}
+
+const StreamPtr MediaComponent::getStream(size_t idx) {
+  StreamPtr result = nullptr;
+  try {
+    result = streams_.at(idx);
+  } catch (const out_of_range &) {
+    LOG(ERROR) << "No stream with index " << idx;
+  }
+  return result;
+}
+
+int MediaComponent::registerStream(const StreamInfo &stream_info) {
+  StreamPtr stream = Stream::createStream(stream_info);
+  int result = -1;
+  if (stream) {
+    int idx = static_cast<int>(streams_.size());
+    streams_.emplace_back(stream);
+    result = idx;
+  }
+  return result;
+}
+
+int MediaComponent::registerStream(const StreamPtr stream) {
+  int result = -1;
+  if (stream) {
+    int idx = static_cast<int>(streams_.size());
+    streams_.emplace_back(stream);
+    result = idx;
+  }
+  return result;
+}
+
+bool MediaComponent::startStream(uint8_t stream_id) {
+  bool result = false;
+  const StreamPtr stream = getStream(stream_id);
+  if (stream) {
+    if (onStartStream(stream)) {
+      result = stream->start();
+      if (result)
+        LOG(INFO) << "Video stream with id=" << static_cast<int>(stream_id)
+                  << " has started";
+    }
+  }
+  return result;
+}
+
+bool MediaComponent::stopStream(uint8_t stream_id) {
+  bool result = false;
+  const StreamPtr stream = getStream(stream_id);
+  if (stream) {
+    stream->stop();
+    result = onStopStream(stream);
+    if (result)
+      LOG(INFO) << "Video stream with id=" << static_cast<int>(stream_id)
+                << " has stopped";
+  }
+  return result;
+}
+
 VideoServer::~VideoServer() {
   stop();
 
@@ -59,10 +135,11 @@ bool VideoServer::start() {
     LOG(ERROR) << "Unable to start VideoServer - not initialized";
     return false;
   }
-  if (n_inuse == 0) {
+  if (n_inuse_ == 0) {
     LOG(ERROR) << "Unable to start VideoServer - no cameras added";
     return false;
   }
+  // camera stream start will happen in handle_video_start_streaming
   return true;
 }
 
@@ -71,15 +148,11 @@ void VideoServer::stop() {
 
   while (compid <= MAV_COMP_ID_CAMERA6) {
     MediaComponentPtr cam_iface = getMediaComponent(compid);
-    if (cam_iface && cam_iface->getRgbEnabled())
-      cam_iface->setRgbEnabled(false);
-    const auto &it = idToErqHandle_.find(compid);
-    if (it != idToErqHandle_.end()) {
-      AsyncERQPtr erq_handle = move(it->second);
-      AsyncController *async_controller = nullptr;
-      erq_handle->removeFrom(async_controller);
-      idToErqHandle_.erase(it);
+    if (cam_iface) {
+      size_t sz = cam_iface->getNumberOfStreams();
+      for (uint8_t idx = 0; idx < sz; ++idx) cam_iface->stopStream(idx);
     }
+
     compid++;
   }
 }
@@ -127,12 +200,12 @@ bool VideoServer::handle_request_video_stream_info(
 
   MediaComponent *cam_iface = getMediaComponent(cmd.target_component);
   if (cam_iface) {
-    uint8_t sz = static_cast<uint8_t>(cam_iface->getInfoSize());
+    uint8_t sz = static_cast<uint8_t>(cam_iface->getNumberOfStreams());
     uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
     if (stream_id > 0) {
-      StreamInfo *minfo = cam_iface->getInfo(--stream_id);
-      if (minfo) result = true;
+      const StreamPtr stream = cam_iface->getStream(--stream_id);
+      if (stream) result = true;
 
       send_ack(cmd.command, result, cmd.target_component, from.group_id,
                from.instance_id);
@@ -143,9 +216,11 @@ bool VideoServer::handle_request_video_stream_info(
 
         mavlink_msg_video_stream_information_pack(
             getRoster()->getMcastId(), cmd.target_component, &msg, stream_id,
-            sz, VIDEO_STREAM_TYPE_MPEG_TS_H264, minfo->status, minfo->fps,
-            minfo->width, minfo->height, minfo->bitrate, 0, 90,
-            minfo->name.c_str(), minfo->uri.c_str());
+            sz, stream->getStreamType(), stream->getStreamFlags(),
+            stream->getStreamFramerate(), stream->getStreamWidth(),
+            stream->getStreamHeight(), stream->getStreamBitrate(),
+            stream->getStreamRotation(), stream->getStreamHFov(),
+            stream->getStreamName().c_str(), stream->getStreamURI().c_str());
 
         send_mavlink_message(msg, cmd.target_component, from.instance_id);
       }
@@ -158,16 +233,19 @@ bool VideoServer::handle_request_video_stream_info(
 
       if (result) {
         for (size_t i = 0; i < sz; ++i) {
-          StreamInfo *minfo = cam_iface->getInfo(i);
-          if (minfo) {
-            uint8_t stream_id = static_cast<uint8_t>(++i);
+          const StreamPtr stream = cam_iface->getStream(i);
+          if (stream) {
+            uint8_t stream_id = static_cast<uint8_t>(i + 1);
             mavlink_message_t msg;
 
             mavlink_msg_video_stream_information_pack(
                 getRoster()->getMcastId(), cmd.target_component, &msg,
-                stream_id, sz, VIDEO_STREAM_TYPE_MPEG_TS_H264, minfo->status,
-                minfo->fps, minfo->width, minfo->height, minfo->bitrate, 0, 90,
-                minfo->name.c_str(), minfo->uri.c_str());
+                stream_id, sz, stream->getStreamType(),
+                stream->getStreamFlags(), stream->getStreamFramerate(),
+                stream->getStreamWidth(), stream->getStreamHeight(),
+                stream->getStreamBitrate(), stream->getStreamRotation(),
+                stream->getStreamHFov(), stream->getStreamName().c_str(),
+                stream->getStreamURI().c_str());
 
             send_mavlink_message(msg, cmd.target_component, from.instance_id);
             this_thread::sleep_for(chrono::milliseconds(100));
@@ -187,10 +265,24 @@ bool VideoServer::handle_video_start_streaming(
     const mavlink_command_long_t &cmd, const SparseAddress &from) {
   bool result = false;
   int compid = cmd.target_component;
-  MediaComponent *cam_iface = getMediaComponent(compid);
+  uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
-  if (cam_iface /*&& !cam_iface->getRgbEnabled()*/)
-    result = cam_iface->onStartStream(from);
+  MediaComponent *cam_iface = getMediaComponent(compid);
+  if (cam_iface) {
+    uint8_t sz = static_cast<uint8_t>(cam_iface->getNumberOfStreams());
+
+    if (stream_id > 0) {
+      result = cam_iface->startStream(--stream_id);
+    } else {
+      for (size_t i = 0; i < sz; ++i) {
+        const StreamPtr stream = cam_iface->getStream(i);
+        if (stream) {
+          result = true;
+          result &= cam_iface->startStream(i);
+        }
+      }
+    }
+  }
 
   return result;
 }
@@ -198,11 +290,25 @@ bool VideoServer::handle_video_start_streaming(
 bool VideoServer::handle_video_stop_streaming(const mavlink_command_long_t &cmd,
                                               const SparseAddress &from) {
   bool result = false;
-  int compid = int(cmd.target_component);
-  MediaComponent *cam_iface = getMediaComponent(compid);
+  int compid = cmd.target_component;
+  uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
-  if (cam_iface /*&& cam_iface->getRgbEnabled()*/)
-    result = cam_iface->onStopStream(from);
+  MediaComponent *cam_iface = getMediaComponent(compid);
+  if (cam_iface) {
+    uint8_t sz = static_cast<uint8_t>(cam_iface->getNumberOfStreams());
+
+    if (stream_id > 0) {
+      result = cam_iface->stopStream(--stream_id);
+    } else {
+      for (size_t i = 0; i < sz; ++i) {
+        const StreamPtr stream = cam_iface->getStream(i);
+        if (stream) {
+          result = true;
+          result &= cam_iface->stopStream(i);
+        }
+      }
+    }
+  }
 
   return result;
 }
@@ -260,10 +366,8 @@ pointprec_t VideoServer::command_long_handler(uint8_t *payload, size_t /*len*/,
       case MAV_CMD_VIDEO_STOP_CAPTURE:
       case MAV_CMD_REQUEST_CAMERA_IMAGE_CAPTURE:
       case MAV_CMD_DO_TRIGGER_CONTROL:
-        if (!is_zero(cmd.param1)) {
-          send_ack(cmd.command, false, cmd.target_component, from.group_id,
-                   from.instance_id);
-        }
+        send_ack(cmd.command, false, cmd.target_component, from.group_id,
+                 from.instance_id);
         LOG(INFO) << "Camera command not " << cmd.command << " supported";
         break;
       default:
@@ -286,7 +390,7 @@ bool VideoServer::addMediaComponent(MediaComponentPtr comp) {
         comp->setId(static_cast<uint8_t>(compid));
         comp->setRoster(roster);
         ret = roster->getCBus().add_component(comp);
-        ++n_inuse;
+        ++n_inuse_;
         break;
       }
       compid++;
@@ -300,7 +404,7 @@ void VideoServer::removeMediaComponent(int comp_id) {
   RouteSystemPtr roster = getRoster();
   if (roster) {
     roster->getCBus().remove_component(comp_id);
-    --n_inuse;
+    --n_inuse_;
   }
 }
 
