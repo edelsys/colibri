@@ -53,9 +53,9 @@ AsyncController::AsyncController()
   before_w.start();
 
   // #ifdef WITH_EV_NON_BLOCKING
-  idle_w.set<AsyncController, &AsyncController::noop>(this);
-  idle_w.set(getNativeHandler());
-  idle_w.start();
+  // idle_w.set<AsyncController, &AsyncController::noop>(this);
+  // idle_w.set(getNativeHandler());
+  // idle_w.start();
   // #endif
 }
 

@@ -40,7 +40,7 @@ void BaseComponent::heartbeatCallback() {
   mavlink_message_t msg;
   mavlink_msg_heartbeat_pack(roster_->getMcastId(), id_, &msg, MAV_TYPE_GENERIC,
                              MAV_AUTOPILOT_INVALID, MAV_MODE_PREFLIGHT, 0,
-                             MAV_STATE_ACTIVE);
+                             status_);
   send(msg, {SparseAddress(0, MAV_COMP_ID_ALL, 0)});
 }
 

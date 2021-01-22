@@ -30,10 +30,10 @@
 #ifndef COMPONENTBUS_H
 #define COMPONENTBUS_H
 
-#include <map>
-
 #include <muflow/sparseutils.h>
 #include <muqueue/erqperiodic.h>
+
+#include <map>
 
 #include "mavlink2/common/mavlink.h"
 #include "mavparams.h"
@@ -84,6 +84,7 @@ class BaseComponent : public MavParams {
     if (!started_ && startImpl()) {
       startHearbeat();
       started_ = true;
+      status_ = MAV_STATE_ACTIVE;
     }
     return started_;
   }
@@ -93,6 +94,7 @@ class BaseComponent : public MavParams {
       stopHeartbeat();
       stopImpl();
       started_ = false;
+      status_ = MAV_STATE_UNINIT;
     }
   }
 
@@ -120,6 +122,14 @@ class BaseComponent : public MavParams {
   fflow::AsyncERQPtr heartbeat_erq_ = nullptr;
   fflow::RouteSystemPtr roster_ = nullptr;
   bool started_ = false;
+  uint8_t status_ = MAV_STATE_UNINIT;
+
+ protected:
+  uint8_t set_status(uint8_t stat) {
+    status_ = stat;
+    return status_;
+  }
+  uint8_t get_status() { return status_; }
 };
 
 typedef BaseComponent *BaseComponentPtr;
