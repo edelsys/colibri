@@ -68,6 +68,7 @@ void Stream::kill() {
     AsyncController *async_controller = nullptr;
     erq_handle_->removeFrom(async_controller);
     worker_lock_.unlock();
+    erq_handle_ = nullptr;
   }
   running_ = false;
 }
