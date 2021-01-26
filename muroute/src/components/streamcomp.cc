@@ -31,25 +31,45 @@
 
 #include <assert.h>
 
+#include <muqueue/erqperiodic.h>
+
 using namespace std;
 using namespace fflow;
 
 bool Stream::start() {
-  if (running_) return true;
+  if (!running_) {
+    if (worker_) {
+      fflow::AsyncERQPtr erq_handle = nullptr;
 
-  // TODO: launch stream thread here
+      fflow::add_periodic_handled<void>(([&](void) -> void {
+                                          if (worker_lock_.try_lock()) return;
+                                          worker_(info_);
+                                        }),
+                                        0, 1.0 / getStreamHeight(), erq_handle);
 
-  running_ = true;
-  return true;
+      if (erq_handle) {
+        erq_handle_ = erq_handle;
+        running_ = true;
+      }
+    }
+  }
+
+  return running_;
 }
 
 void Stream::stop() {
   if (running_) {
-    // TODO:
-    AsyncController *async_controller = nullptr;
-    if (erq_handle_) erq_handle_->removeFrom(async_controller);
-    running_ = false;
+    kill();
   }
+}
+
+void Stream::kill() {
+  if (erq_handle_) {
+    AsyncController *async_controller = nullptr;
+    erq_handle_->removeFrom(async_controller);
+    worker_lock_.unlock();
+  }
+  running_ = false;
 }
 
 const StreamPtr MediaComponent::getStream(size_t idx) {
@@ -62,8 +82,9 @@ const StreamPtr MediaComponent::getStream(size_t idx) {
   return result;
 }
 
-int MediaComponent::registerStream(const StreamInfo &stream_info) {
-  StreamPtr stream = Stream::createStream(stream_info);
+int MediaComponent::registerStream(const StreamInfo &stream_info,
+                                   const Worker &worker) {
+  StreamPtr stream = Stream::createStream(stream_info, worker);
   int result = -1;
   if (stream) {
     int idx = static_cast<int>(streams_.size());
@@ -147,10 +168,10 @@ void VideoServer::stop() {
   int compid = MAV_COMP_ID_CAMERA;
 
   while (compid <= MAV_COMP_ID_CAMERA6) {
-    MediaComponentPtr cam_iface = getMediaComponent(compid);
-    if (cam_iface) {
-      size_t sz = cam_iface->getNumberOfStreams();
-      for (uint8_t idx = 0; idx < sz; ++idx) cam_iface->stopStream(idx);
+    MediaComponentPtr mc = getMediaComponent(compid);
+    if (mc) {
+      size_t sz = mc->getNumberOfStreams();
+      for (uint8_t idx = 0; idx < sz; ++idx) mc->stopStream(idx);
     }
 
     compid++;
@@ -167,15 +188,15 @@ bool VideoServer::handle_request_camera_info(const mavlink_command_long_t &cmd,
     return true;
   }
 
-  MediaComponentPtr cam_iface = getMediaComponent(cmd.target_component);
-  if (cam_iface) result = true;
+  MediaComponentPtr mc = getMediaComponent(cmd.target_component);
+  if (mc) result = true;
 
   send_ack(cmd.command, result, cmd.target_component, from.group_id,
            from.instance_id);
   this_thread::sleep_for(chrono::milliseconds(100));
 
   if (result) {
-    const MediaCapsInfo &mcinfo = cam_iface->getCapsInfo();
+    const MediaCapsInfo &mcinfo = mc->getCapsInfo();
     mavlink_message_t msg;
 
     mavlink_msg_camera_information_pack(
@@ -198,13 +219,13 @@ bool VideoServer::handle_request_video_stream_info(
     const mavlink_command_long_t &cmd, const fflow::SparseAddress &from) {
   bool result = false;
 
-  MediaComponent *cam_iface = getMediaComponent(cmd.target_component);
-  if (cam_iface) {
-    uint8_t sz = static_cast<uint8_t>(cam_iface->getNumberOfStreams());
+  MediaComponent *mc = getMediaComponent(cmd.target_component);
+  if (mc) {
+    uint8_t sz = static_cast<uint8_t>(mc->getNumberOfStreams());
     uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
     if (stream_id > 0) {
-      const StreamPtr stream = cam_iface->getStream(--stream_id);
+      const StreamPtr stream = mc->getStream(--stream_id);
       if (stream) result = true;
 
       send_ack(cmd.command, result, cmd.target_component, from.group_id,
@@ -233,7 +254,7 @@ bool VideoServer::handle_request_video_stream_info(
 
       if (result) {
         for (uint8_t i = 0; i < sz; ++i) {
-          const StreamPtr stream = cam_iface->getStream(i);
+          const StreamPtr stream = mc->getStream(i);
           if (stream) {
             uint8_t stream_id = static_cast<uint8_t>(i + 1);
             mavlink_message_t msg;
@@ -266,19 +287,19 @@ bool VideoServer::handle_video_start_streaming(
   bool result = false;
   int compid = cmd.target_component;
 
-  MediaComponent *cam_iface = getMediaComponent(compid);
-  if (cam_iface) {
+  MediaComponent *mc = getMediaComponent(compid);
+  if (mc) {
     uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
     if (stream_id > 0) {
-      result = cam_iface->startStream(--stream_id);
+      result = mc->startStream(--stream_id);
     } else {
-      uint8_t sz = static_cast<uint8_t>(cam_iface->getNumberOfStreams());
+      uint8_t sz = static_cast<uint8_t>(mc->getNumberOfStreams());
       for (uint8_t i = 0; i < sz; ++i) {
-        const StreamPtr stream = cam_iface->getStream(i);
+        const StreamPtr stream = mc->getStream(i);
         if (stream) {
           result = true;
-          result &= cam_iface->startStream(i);
+          result &= mc->startStream(i);
         }
       }
     }
@@ -292,19 +313,19 @@ bool VideoServer::handle_video_stop_streaming(const mavlink_command_long_t &cmd,
   bool result = false;
   int compid = cmd.target_component;
 
-  MediaComponent *cam_iface = getMediaComponent(compid);
-  if (cam_iface) {
+  MediaComponent *mc = getMediaComponent(compid);
+  if (mc) {
     uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
     if (stream_id > 0) {
-      result = cam_iface->stopStream(--stream_id);
+      result = mc->stopStream(--stream_id);
     } else {
-      uint8_t sz = static_cast<uint8_t>(cam_iface->getNumberOfStreams());
+      uint8_t sz = static_cast<uint8_t>(mc->getNumberOfStreams());
       for (uint8_t i = 0; i < sz; ++i) {
-        const StreamPtr stream = cam_iface->getStream(i);
+        const StreamPtr stream = mc->getStream(i);
         if (stream) {
           result = true;
-          result &= cam_iface->stopStream(i);
+          result &= mc->stopStream(i);
         }
       }
     }

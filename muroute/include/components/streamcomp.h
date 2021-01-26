@@ -87,6 +87,7 @@ struct StreamInfo {
 
 class Stream;
 using StreamPtr = std::shared_ptr<Stream>;
+using Worker = void (*)(const StreamInfo &);
 
 /** -----------------------------------
  *
@@ -95,12 +96,18 @@ using StreamPtr = std::shared_ptr<Stream>;
  */
 class Stream {
  public:
-  Stream() : erq_handle_(nullptr), running_(false) {}
+  Stream() : erq_handle_(nullptr), running_(false), worker_(nullptr) {}
+  Stream(const Worker &worker)
+      : erq_handle_(nullptr), running_(false), worker_(worker) {}
   Stream(const StreamInfo &info)
-      : erq_handle_(nullptr), running_(false), info_(info) {}
+      : erq_handle_(nullptr), running_(false), info_(info), worker_(nullptr) {}
+  Stream(const StreamInfo &info, const Worker &worker)
+      : erq_handle_(nullptr), running_(false), info_(info), worker_(worker) {}
+
   virtual ~Stream() { stop(); }
 
   bool is_running() const { return running_; }
+  void setWorker(const Worker &worker) { worker_ = worker; }
 
   uint8_t getStreamType() const { return info_.type_; }
   void setStreamType(uint8_t type) { info_.type_ = type; }
@@ -125,21 +132,22 @@ class Stream {
 
   bool start();
   void stop();
+  void kill();
 
  private:
   fflow::AsyncERQPtr erq_handle_;
   bool running_;
   StreamInfo info_;
+  Worker worker_;
+  std::mutex worker_lock_;
 
  public:
+  // helpers
   static StreamPtr createStream() { return std::make_shared<Stream>(); }
-
-  static StreamPtr createStream(const StreamInfo &info) {
-    return std::make_shared<Stream>(info);
+  static StreamPtr createStream(const StreamInfo &info, const Worker &worker) {
+    return std::make_shared<Stream>(info, worker);
   }
 };
-
-using StreamPtr = std::shared_ptr<Stream>;
 
 /** ------------------------------------
  *
@@ -167,7 +175,7 @@ class MediaComponent : public fflow::BaseComponent {
   void setRgbEnabled(bool rgbEnabled) { rgbEnabled_ = rgbEnabled; }
 
   const StreamPtr getStream(size_t);
-  int registerStream(const StreamInfo &);
+  int registerStream(const StreamInfo &, const Worker &);
   int registerStream(const StreamPtr);
   bool startStream(uint8_t);
   bool stopStream(uint8_t);
@@ -191,7 +199,7 @@ typedef MediaComponent *MediaComponentPtr;
  *
  *
  */
-class VideoServer : public fflow::BaseMavlinkProtocol {
+class VideoServer final : public fflow::BaseMavlinkProtocol {
  public:
   VideoServer() : n_inuse_(0), timeout_handler_(0) {}
   virtual ~VideoServer();
