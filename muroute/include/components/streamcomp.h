@@ -39,8 +39,6 @@
 #include <memory>
 #include <vector>
 
-#include <opencv2/opencv.hpp>
-
 /** -----------------------------------
  *
  * @brief The CameraInfo struct
@@ -103,10 +101,6 @@ class Stream {
   virtual ~Stream() { stop(); }
 
   bool is_running() const { return running_; }
-  const ConcRingBuffer<std::shared_ptr<cv::Mat>> &getRgbBuffer() const {
-    return rgb_buff_;
-  }
-  ConcRingBuffer<std::shared_ptr<cv::Mat>> &getRgbBuffer() { return rgb_buff_; }
 
   uint8_t getStreamType() const { return info_.type_; }
   void setStreamType(uint8_t type) { info_.type_ = type; }
@@ -136,7 +130,6 @@ class Stream {
   fflow::AsyncERQPtr erq_handle_;
   bool running_;
   StreamInfo info_;
-  ConcRingBuffer<std::shared_ptr<cv::Mat>> rgb_buff_;
 
  public:
   static StreamPtr createStream() { return std::make_shared<Stream>(); }
@@ -206,8 +199,8 @@ class VideoServer : public fflow::BaseMavlinkProtocol {
  public:
   bool init(fflow::RouteSystemPtr);
   bool addMediaComponent(MediaComponentPtr);
-  void removeMediaComponent(int);
-  void removeMediaComponent(MediaComponentPtr);
+  bool removeMediaComponent(int);
+  bool removeMediaComponent(MediaComponentPtr);
   MediaComponentPtr getMediaComponent(int);
 
   const fflow::message_handler_note_t *get_table() const override {

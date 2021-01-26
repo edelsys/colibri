@@ -98,14 +98,17 @@ bool ComponentBus::add_component(BaseComponentPtr component) {
   return result;
 }
 
-void ComponentBus::remove_component(int comp_id) {
+bool ComponentBus::remove_component(int comp_id) {
+  bool result = false;
   const auto &it = idToComp_.find(comp_id);
   if (it != idToComp_.end()) {
     it->second->stop();
     idToComp_.erase(it);
+    result = true;
     LOG(INFO) << "Component with ID=" << static_cast<int>(it->second->getId())
               << " removed from ComponentBus=" << this;
   }
+  return result;
 }
 
 bool ComponentBus::has_component(int comp_id) const {

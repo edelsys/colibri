@@ -232,7 +232,7 @@ bool VideoServer::handle_request_video_stream_info(
       this_thread::sleep_for(chrono::milliseconds(100));
 
       if (result) {
-        for (size_t i = 0; i < sz; ++i) {
+        for (uint8_t i = 0; i < sz; ++i) {
           const StreamPtr stream = cam_iface->getStream(i);
           if (stream) {
             uint8_t stream_id = static_cast<uint8_t>(i + 1);
@@ -265,16 +265,16 @@ bool VideoServer::handle_video_start_streaming(
     const mavlink_command_long_t &cmd, const SparseAddress &from) {
   bool result = false;
   int compid = cmd.target_component;
-  uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
   MediaComponent *cam_iface = getMediaComponent(compid);
   if (cam_iface) {
-    uint8_t sz = static_cast<uint8_t>(cam_iface->getNumberOfStreams());
+    uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
     if (stream_id > 0) {
       result = cam_iface->startStream(--stream_id);
     } else {
-      for (size_t i = 0; i < sz; ++i) {
+      uint8_t sz = static_cast<uint8_t>(cam_iface->getNumberOfStreams());
+      for (uint8_t i = 0; i < sz; ++i) {
         const StreamPtr stream = cam_iface->getStream(i);
         if (stream) {
           result = true;
@@ -291,16 +291,16 @@ bool VideoServer::handle_video_stop_streaming(const mavlink_command_long_t &cmd,
                                               const SparseAddress &from) {
   bool result = false;
   int compid = cmd.target_component;
-  uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
   MediaComponent *cam_iface = getMediaComponent(compid);
   if (cam_iface) {
-    uint8_t sz = static_cast<uint8_t>(cam_iface->getNumberOfStreams());
+    uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
     if (stream_id > 0) {
       result = cam_iface->stopStream(--stream_id);
     } else {
-      for (size_t i = 0; i < sz; ++i) {
+      uint8_t sz = static_cast<uint8_t>(cam_iface->getNumberOfStreams());
+      for (uint8_t i = 0; i < sz; ++i) {
         const StreamPtr stream = cam_iface->getStream(i);
         if (stream) {
           result = true;
@@ -400,17 +400,22 @@ bool VideoServer::addMediaComponent(MediaComponentPtr comp) {
   return ret;
 }
 
-void VideoServer::removeMediaComponent(int comp_id) {
+bool VideoServer::removeMediaComponent(int comp_id) {
+  bool result = false;
   RouteSystemPtr roster = getRoster();
   if (roster) {
-    roster->getCBus().remove_component(comp_id);
-    --n_inuse_;
+    if (roster->getCBus().remove_component(comp_id)) {
+      --n_inuse_;
+      result = true;
+    }
   }
+  return result;
 }
 
-void VideoServer::removeMediaComponent(MediaComponentPtr comp) {
+bool VideoServer::removeMediaComponent(MediaComponentPtr comp) {
   RouteSystemPtr roster = getRoster();
-  if (roster && comp) removeMediaComponent(comp->getId());
+  if (roster && comp) return removeMediaComponent(comp->getId());
+  return false;
 }
 
 MediaComponentPtr VideoServer::getMediaComponent(int comp_id) {

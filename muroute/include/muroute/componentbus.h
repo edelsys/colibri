@@ -135,7 +135,7 @@ class ComponentBus {
 
  public:
   bool add_component(BaseComponentPtr);
-  void remove_component(int);
+  bool remove_component(int);
   BaseComponentPtr get_component(int);
   bool has_component(int) const;
   void clear();
