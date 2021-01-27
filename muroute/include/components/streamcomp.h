@@ -34,6 +34,7 @@
 #include <muroute/mavlink2/common/mavlink.h>
 #include <muroute/mavparamproto.h>
 
+#include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -87,7 +88,7 @@ struct StreamInfo {
 
 class Stream;
 using StreamPtr = std::shared_ptr<Stream>;
-using Worker = void (*)(const StreamInfo &);
+using Worker = std::function<void(const StreamInfo &)>;
 
 /** -----------------------------------
  *

@@ -125,11 +125,11 @@ class BaseComponent : public MavParams {
   uint8_t status_ = MAV_STATE_UNINIT;
 
  protected:
-  uint8_t set_status(uint8_t stat) {
+  uint8_t setStatus(uint8_t stat) {
     status_ = stat;
     return status_;
   }
-  uint8_t get_status() { return status_; }
+  uint8_t getStatus() const { return status_; }
 };
 
 typedef BaseComponent *BaseComponentPtr;

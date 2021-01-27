@@ -43,6 +43,8 @@ bool Stream::start() {
 
       fflow::add_periodic_handled<void>(([&](void) -> void {
                                           if (worker_lock_.try_lock()) return;
+                                          std::lock_guard<std::mutex> lock(
+                                              worker_lock_, std::adopt_lock);
                                           worker_(info_);
                                         }),
                                         0, 1.0 / getStreamHeight(), erq_handle);
@@ -354,8 +356,10 @@ pointprec_t VideoServer::command_long_handler(uint8_t *payload, size_t /*len*/,
     return 1.0;
   }
 
-  LOG(INFO) << "Command received: (sysid:" << cmd.target_system
-            << " compid:" << comp_id << " msgid:" << cmd.command << ")";
+  LOG(INFO) << "Command received: (sysid:"
+            << static_cast<int>(cmd.target_system)
+            << " compid:" << static_cast<int>(comp_id)
+            << " msgid:" << static_cast<int>(cmd.command) << ")";
 
   bool result = false;
 
@@ -390,10 +394,12 @@ pointprec_t VideoServer::command_long_handler(uint8_t *payload, size_t /*len*/,
       case MAV_CMD_DO_TRIGGER_CONTROL:
         send_ack(cmd.command, false, cmd.target_component, from.group_id,
                  from.instance_id);
-        LOG(INFO) << "Camera command not " << cmd.command << " supported";
+        LOG(INFO) << "Camera command " << static_cast<int>(cmd.command)
+                  << " not supported";
         break;
       default:
-        LOG(INFO) << "Command " << cmd.command << " unhandled";
+        LOG(INFO) << "Command " << static_cast<int>(cmd.command)
+                  << " unhandled";
         break;
     }
   }
@@ -412,7 +418,7 @@ bool VideoServer::addMediaComponent(MediaComponentPtr comp) {
         comp->setId(static_cast<uint8_t>(compid));
         comp->setRoster(roster);
         ret = roster->getCBus().add_component(comp);
-        ++n_inuse_;
+        if (ret) ++n_inuse_;
         break;
       }
       compid++;
