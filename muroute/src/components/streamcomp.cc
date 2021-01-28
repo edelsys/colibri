@@ -294,7 +294,13 @@ bool VideoServer::handle_video_start_streaming(
   int compid = cmd.target_component;
 
   MediaComponent *mc = getMediaComponent(compid);
-  if (mc) {
+  if (mc && mc->getNumberOfStreams() > 0) result = true;
+
+  send_ack(cmd.command, result, cmd.target_component, from.group_id,
+           from.instance_id);
+  this_thread::sleep_for(chrono::milliseconds(100));
+
+  if (result) {
     uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
     if (stream_id > 0) {
@@ -303,10 +309,7 @@ bool VideoServer::handle_video_start_streaming(
       uint8_t sz = static_cast<uint8_t>(mc->getNumberOfStreams());
       for (uint8_t i = 0; i < sz; ++i) {
         const StreamPtr stream = mc->getStream(i);
-        if (stream) {
-          result = true;
-          result &= mc->startStream(i);
-        }
+        if (stream) result &= mc->startStream(i);
       }
     }
   }
@@ -320,7 +323,13 @@ bool VideoServer::handle_video_stop_streaming(const mavlink_command_long_t &cmd,
   int compid = cmd.target_component;
 
   MediaComponent *mc = getMediaComponent(compid);
-  if (mc) {
+  if (mc) result = true;
+
+  send_ack(cmd.command, result, cmd.target_component, from.group_id,
+           from.instance_id);
+  this_thread::sleep_for(chrono::milliseconds(100));
+
+  if (result) {
     uint8_t stream_id = static_cast<uint8_t>(std::abs(cmd.param1));
 
     if (stream_id > 0) {
@@ -329,10 +338,7 @@ bool VideoServer::handle_video_stop_streaming(const mavlink_command_long_t &cmd,
       uint8_t sz = static_cast<uint8_t>(mc->getNumberOfStreams());
       for (uint8_t i = 0; i < sz; ++i) {
         const StreamPtr stream = mc->getStream(i);
-        if (stream) {
-          result = true;
-          result &= mc->stopStream(i);
-        }
+        if (stream) result &= mc->stopStream(i);
       }
     }
   }
