@@ -43,11 +43,11 @@ bool Stream::start() {
 
       fflow::add_periodic_handled<void>(([&](void) -> void {
                                           if (worker_lock_.try_lock()) return;
-                                          std::lock_guard<std::mutex> lock(
-                                              worker_lock_, std::adopt_lock);
                                           worker_(info_);
+                                          worker_lock_.unlock();
                                         }),
-                                        0, 1.0 / getStreamHeight(), erq_handle);
+                                        0, 1.0 / getStreamFramerate(),
+                                        erq_handle);
 
       if (erq_handle) {
         erq_handle_ = erq_handle;
@@ -440,7 +440,8 @@ bool VideoServer::addMediaComponent(MediaComponentPtr comp) {
 bool VideoServer::removeMediaComponent(int comp_id) {
   bool result = false;
   RouteSystemPtr roster = getRoster();
-  if (roster) {
+  if (roster && comp_id >= MAV_COMP_ID_CAMERA &&
+      comp_id <= MAV_COMP_ID_CAMERA6) {
     if (roster->getCBus().remove_component(comp_id)) {
       --n_inuse_;
       result = true;
