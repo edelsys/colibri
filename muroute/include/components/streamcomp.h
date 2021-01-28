@@ -77,8 +77,8 @@ struct StreamInfo {
   uint8_t type_ = VIDEO_STREAM_TYPE_MPEG_TS_H264;
   uint16_t flags_ = VIDEO_STREAM_STATUS_FLAGS_RUNNING;
   float framerate_ = 30.0;
-  uint16_t resolution_h_ = 424;
-  uint16_t resolution_w_ = 240;
+  uint16_t resolution_h_ = 240;
+  uint16_t resolution_w_ = 424;
   uint32_t bitrate_ = 424 * 240 * 4 * 8 * 30;
   uint16_t rotation_ = 0;
   uint16_t hfov_ = 90;

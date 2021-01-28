@@ -114,7 +114,7 @@ bool MediaComponent::startStream(uint8_t stream_id) {
     if (onStartStream(stream)) {
       result = stream->start();
       if (result)
-        LOG(INFO) << "Video stream with id=" << static_cast<int>(stream_id)
+        LOG(INFO) << "Video stream with id=" << static_cast<int>(stream_id + 1)
                   << " has started";
     }
   }
@@ -128,7 +128,7 @@ bool MediaComponent::stopStream(uint8_t stream_id) {
     stream->stop();
     result = onStopStream(stream);
     if (result)
-      LOG(INFO) << "Video stream with id=" << static_cast<int>(stream_id)
+      LOG(INFO) << "Video stream with id=" << static_cast<int>(stream_id + 1)
                 << " has stopped";
   }
   return result;
