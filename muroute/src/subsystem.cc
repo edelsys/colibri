@@ -60,7 +60,7 @@ void BaseMavlinkProtocol::send_ack(int cmd, bool result, int src_comp_id,
                                result ? MAV_RESULT_ACCEPTED : MAV_RESULT_FAILED,
                                0, 0, dst_sys_id, dst_comp_id);
 
-  send_mavlink_message(msg, src_comp_id, dst_sys_id, dst_sys_id);
+  send_mavlink_message(msg, src_comp_id, dst_sys_id, dst_comp_id);
 }
 
 void BaseMavlinkProtocol::send_mavlink_message(mavlink_message_t &msg,

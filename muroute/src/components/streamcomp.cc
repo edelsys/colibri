@@ -212,7 +212,8 @@ bool VideoServer::handle_request_camera_info(const mavlink_command_long_t &cmd,
         uint8_t(mcinfo.lens_id), mcinfo.flags, mcinfo.cam_definition_version,
         mcinfo.cam_definition_uri.c_str());
 
-    send_mavlink_message(msg, cmd.target_component, from.instance_id);
+    send_mavlink_message(msg, cmd.target_component, from.group_id,
+                         from.instance_id);
   }
 
   return result;
@@ -246,7 +247,8 @@ bool VideoServer::handle_request_video_stream_info(
             stream->getStreamRotation(), stream->getStreamHFov(),
             stream->getStreamName().c_str(), stream->getStreamURI().c_str());
 
-        send_mavlink_message(msg, cmd.target_component, from.instance_id);
+        send_mavlink_message(msg, cmd.target_component, from.group_id,
+                             from.instance_id);
       }
     } else {
       if (sz > 0) result = true;
@@ -271,7 +273,8 @@ bool VideoServer::handle_request_video_stream_info(
                 stream->getStreamHFov(), stream->getStreamName().c_str(),
                 stream->getStreamURI().c_str());
 
-            send_mavlink_message(msg, cmd.target_component, from.instance_id);
+            send_mavlink_message(msg, cmd.target_component, from.group_id,
+                                 from.instance_id);
             this_thread::sleep_for(chrono::milliseconds(100));
           }
         }
