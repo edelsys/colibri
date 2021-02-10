@@ -60,6 +60,14 @@ class AsyncERQ {
 
   virtual bool scheduleIn(AsyncController *) = 0;
   virtual bool removeFrom(AsyncController *) = 0;
+
+  // stat
+  uint64_t incnt;
+  uint64_t outcnt;
+  uint64_t overruns;
+  uint64_t nested;
+  tTime maxT;
+  tTime avgT;
 };
 
 typedef std::shared_ptr<AsyncERQ> AsyncERQPtr;
@@ -71,6 +79,7 @@ typedef std::shared_ptr<AsyncERQ> AsyncERQPtr;
 class AsyncController : public ev::dynamic_loop {
   std::atomic<bool> runloop;
 
+  // usage statistics
   std::list<AsyncERQPtr> candidates_for_removal;
 
   std::list<AsyncERQPtr> candidates_for_addition;

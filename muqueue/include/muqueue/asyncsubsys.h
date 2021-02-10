@@ -40,7 +40,7 @@ namespace fflow {
 struct StatNote {};
 
 class AsyncSubsystem {
-  const static uint32_t NUMWORKERS = 4;
+  const static uint32_t NUMWORKERS = 6;
 
   /**
    * @brief The StatTable struct

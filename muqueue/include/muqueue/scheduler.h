@@ -76,7 +76,13 @@ class WQueue {
   WQueue();
   virtual ~WQueue();
 
-  void enqueue(DetachedFunctionBasePtr);
+  /**
+   * @brief Return true if buffer is full
+   *
+   * @return true
+   * @return false
+   */
+  bool enqueue(DetachedFunctionBasePtr);
 
   void worker();
 
@@ -123,23 +129,27 @@ struct TaskScheduler {
 
   static std::unique_ptr<TaskScheduler> &instance();
 
-  void enqueue_impl(DetachedFunctionBasePtr f, int prio) {
+  bool enqueue_impl(DetachedFunctionBasePtr f, int prio) {
     // round robin
     size_t qsiz = queues.size();
     assert(qsiz);
 
+    bool ret = false;
+
     if (prio > 0 || (qsiz == 1))  // dummy QOS
     {
-      queues[0]->enqueue(f);  // pass to workqueue
+      ret = queues[0]->enqueue(f);  // pass to workqueue
     } else if (qsiz > 1) {
       std::uint64_t next = (id++ % (qsiz - 1)) + 1;
-      queues[next]->enqueue(f);  // pass to workqueue
+      ret = queues[next]->enqueue(f);  // pass to workqueue
     } else {
       assert(false);
     }
+
+    return ret;
   }
 
-  static void enqueue(DetachedFunctionBasePtr t, int prio = 0) {
+  static bool enqueue(DetachedFunctionBasePtr t, int prio = 0) {
     return instance()->enqueue_impl(t, prio);
   }
 

@@ -150,8 +150,10 @@ void WQueue::worker() {
   running = false;  // end
 }
 
-void WQueue::enqueue(DetachedFunctionBasePtr t) {
+bool WQueue::enqueue(DetachedFunctionBasePtr t) {
   std::lock_guard<std::mutex> lock(accesslock);
+  bool ret = wqueue.full();
   wqueue.push_back(t);
   cnotify.notify_one();
+  return ret;
 }
