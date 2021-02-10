@@ -172,9 +172,6 @@ class MediaComponent : public fflow::BaseComponent {
   const MediaCapsInfo &getCapsInfo() const { return cinfo_; }
   void setCapsInfo(const MediaCapsInfo &cinfo) { cinfo_ = cinfo; }
 
-  bool getRgbEnabled() const { return rgbEnabled_; }
-  void setRgbEnabled(bool rgbEnabled) { rgbEnabled_ = rgbEnabled; }
-
   const StreamPtr getStream(size_t);
   int registerStream(const StreamInfo &, const Worker &);
   int registerStream(const StreamPtr);
@@ -187,7 +184,6 @@ class MediaComponent : public fflow::BaseComponent {
   virtual bool onStopStream(const StreamPtr &) { return true; }
 
  private:
-  bool rgbEnabled_ = false;
   std::vector<StreamPtr> streams_;
   MediaCapsInfo cinfo_;
 };
