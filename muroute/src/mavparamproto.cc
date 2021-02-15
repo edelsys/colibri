@@ -128,12 +128,12 @@ void MavParamProto::send_parameters_ext(int src_comp_id, int dst_sys_id,
     assert(param_ext_value.param_count == comp->getParameterCount());
 
     for (auto &x : param_id_to_value) {
-      string param_id = MavParams::toStr(x.first.c_str(), x.first.size());
+      string param_id = x.first;
       mavlink_message_t msg;
 
       param_ext_value.param_index = comp->getParameterIdx(param_id);
-      assert(param_ext_value.param_index >= 0 &&
-             param_ext_value.param_index < param_ext_value.param_count);
+      assert(param_ext_value.param_index > 0 &&
+             param_ext_value.param_index <= param_ext_value.param_count);
 
       mem_copy(param_ext_value.param_id, sizeof(param_ext_value.param_id),
                x.first.c_str(), x.first.size() + 1,
@@ -221,11 +221,13 @@ pointprec_t MavParamProto::param_request_read_handler_ext(
 
   // send broadcast
   if (pread_ext.param_index >= 0)
-    send_parameter_ext(pread_ext.param_index, comp_id,
-                       sa.group_id /*, sa.instance_id*/);
+    send_parameter_ext(pread_ext.param_index, comp_id, 0
+                       /*sa.group_id, sa.instance_id*/);
   else
-    send_parameter_ext(pread_ext.param_id, comp_id,
-                       sa.group_id /*, sa.instance_id*/);
+    send_parameter_ext(
+        MavParams::toStr(pread_ext.param_id, MavParams::max_param_id_len)
+            .c_str(),
+        comp_id, 0 /*sa.group_id, sa.instance_id*/);
 
   return 1.0;
 }
@@ -250,6 +252,8 @@ pointprec_t MavParamProto::param_set_handler_ext(uint8_t *payload, size_t len,
   }
 
   int comp_id = static_cast<int>(pset_ext.target_component);
+  if (!comp_id) comp_id = MavParams::getCompIdForParam(param_id);
+
   LOG(INFO) << "SET PARAMETER EXT: " << param_id << " = "
             << pset_ext.param_value << " FOR COMPONENT WITH ID=" << comp_id;
 
@@ -377,12 +381,12 @@ void MavParamProto::send_parameters(int src_comp_id, int dst_sys_id,
     assert(param_value.param_count == comp->getParameterCount());
 
     for (auto &x : param_id_to_value) {
-      string param_id = MavParams::toStr(x.first.c_str(), x.first.size());
+      string param_id = x.first;
       mavlink_message_t msg;
 
       int param_index = comp->getParameterIdx(param_id);
       param_value.param_index = static_cast<uint16_t>(param_index);
-      assert(param_index >= 0 && param_index < param_value.param_count);
+      assert(param_index > 0 && param_index <= param_value.param_count);
 
       mem_copy(param_value.param_id, sizeof(param_value.param_id),
                x.first.c_str(), x.first.size() + 1,
@@ -438,7 +442,7 @@ pointprec_t MavParamProto::param_request_list_handler(uint8_t *payload,
     for (auto it = roster->getCBus().begin(); it != roster->getCBus().end();
          ++it) {
       // broadcast according to protocol
-      send_parameters(it->first, sa.group_id /*, sa.instance_id*/);
+      send_parameters(it->first, 0 /*sa.group_id, sa.instance_id*/);
     }
   } else {
     // must not enter this branch normally
@@ -449,7 +453,7 @@ pointprec_t MavParamProto::param_request_list_handler(uint8_t *payload,
       return 1.0;
     }
 
-    send_parameters(comp_id, sa.group_id /*, sa.instance_id*/);
+    send_parameters(comp_id, 0 /*sa.group_id, sa.instance_id*/);
   }
 
   return 1.0;
@@ -481,10 +485,12 @@ pointprec_t MavParamProto::param_request_read_handler(uint8_t *payload,
 
   // send broadcast
   if (pread.param_index >= 0)
-    send_parameter(pread.param_index, comp_id,
-                   sa.group_id /*, sa.instance_id*/);
+    send_parameter(pread.param_index, comp_id, 0
+                   /*sa.group_id, sa.instance_id*/);
   else
-    send_parameter(pread.param_id, comp_id, sa.group_id /*, sa.instance_id*/);
+    send_parameter(
+        MavParams::toStr(pread.param_id, MavParams::max_param_id_len).c_str(),
+        comp_id, 0 /*sa.group_id, sa.instance_id*/);
 
   return 1.0;
 }
@@ -507,6 +513,8 @@ pointprec_t MavParamProto::param_set_handler(uint8_t *payload, size_t len,
   }
 
   int comp_id = static_cast<int>(pset.target_component);
+  if (!comp_id) comp_id = MavParams::getCompIdForParam(param_id);
+
   LOG(INFO) << "SET PARAMETER: " << param_id << " = " << pset.param_value
             << " FOR COMPONENT WITH ID=" << comp_id;
 
@@ -539,7 +547,7 @@ pointprec_t MavParamProto::param_set_handler(uint8_t *payload, size_t len,
   }
 
   // send updated value
-  send_parameter(param_id.c_str(), comp_id, sa.group_id /*, sa.instance_id*/);
+  send_parameter(param_id.c_str(), comp_id, 0 /*sa.group_id, sa.instance_id*/);
 
   return 1.0;
 }

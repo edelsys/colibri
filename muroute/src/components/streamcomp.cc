@@ -42,7 +42,7 @@ bool Stream::start() {
       fflow::AsyncERQPtr erq_handle = nullptr;
 
       fflow::add_periodic_handled<void>(([&](void) -> void {
-                                          if (worker_lock_.try_lock()) return;
+                                          if (!worker_lock_.try_lock()) return;
                                           worker_(info_);
                                           worker_lock_.unlock();
                                         }),
@@ -50,6 +50,7 @@ bool Stream::start() {
                                         erq_handle);
 
       if (erq_handle) {
+        assert(erq_handle_ == nullptr);
         erq_handle_ = erq_handle;
         running_ = true;
       }
@@ -421,7 +422,7 @@ bool VideoServer::addMediaComponent(MediaComponentPtr comp) {
   RouteSystemPtr roster = getRoster();
   bool ret = false;
 
-  if (roster) {
+  if (roster && comp) {
     while (compid <= MAV_COMP_ID_CAMERA6) {
       if (!roster->getCBus().has_component(compid)) {
         comp->setId(static_cast<uint8_t>(compid));

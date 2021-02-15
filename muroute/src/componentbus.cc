@@ -38,7 +38,15 @@ using namespace fflow;
 
 void BaseComponent::heartbeatCallback() {
   mavlink_message_t msg;
-  mavlink_msg_heartbeat_pack(roster_->getMcastId(), id_, &msg, MAV_TYPE_GENERIC,
+
+  uint8_t type = MAV_TYPE_GENERIC;
+
+  if (id_ == MAV_COMP_ID_ONBOARD_COMPUTER)
+    type = MAV_TYPE_ONBOARD_CONTROLLER;
+  else if (id_ >= MAV_COMP_ID_CAMERA && id_ <= MAV_COMP_ID_CAMERA6)
+    type = MAV_TYPE_CAMERA;
+
+  mavlink_msg_heartbeat_pack(roster_->getMcastId(), id_, &msg, type,
                              MAV_AUTOPILOT_INVALID, MAV_MODE_PREFLIGHT, 0,
                              status_);
   send(msg, {SparseAddress(0, MAV_COMP_ID_ALL, 0)});
@@ -65,6 +73,7 @@ bool BaseComponent::updateParameter(const string &name,
       MavParams::toParamUnion(old_value, value.type, u);
       __UNUSED__ bool res = updateParameterImpl(name, u);
       assert(res);
+      LOG(ERROR) << "Failed to update parameter " << name;
     }
   }
 

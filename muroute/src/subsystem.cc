@@ -90,7 +90,7 @@ void BaseMavlinkProtocol::send_mavlink_message(mavlink_message_t &msg,
   }
 }
 
-const char RouteSystem::PARAMETER_FORWARDING[] = "Forwarding";
+const char RouteSystem::PARAMETER_FORWARDING[] = "ROUTER_FWD";
 
 /// ************************************************
 /// \brief RouteSystem::RouteSystem
@@ -114,7 +114,7 @@ RouteSystem::RouteSystem()
 
   setMcompId();
 
-  setParameterValue(PARAMETER_FORWARDING, getForwarding());
+  setParameterValue(PARAMETER_FORWARDING, getForwarding(), getId());
 
   addComponent(this);
   addComponent(new BridgeComponent());
