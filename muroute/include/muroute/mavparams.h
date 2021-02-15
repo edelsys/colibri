@@ -30,6 +30,7 @@
 #pragma once
 
 #include <map>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -38,6 +39,10 @@
 namespace fflow {
 
 class MavParams {
+  // global for all parameters of all components
+  static std::map<std::string, uint8_t> paramIdCompId;
+  static std::mutex prot;
+
  public:
   static const size_t max_param_id_len = 16;
   static const size_t max_param_value_len = 128;
@@ -75,21 +80,36 @@ class MavParams {
   int getParameterCount() const { return paramCntr_; }
 
   bool updateParameterValue(const std::string &, const ParamUnion &);
+
   bool setParameterValue(const std::string &, const std::string &, int);
+  bool setParameterValue(const std::string &, const std::string &, int,
+                         uint8_t);
   bool setParameterValue(const std::string &, double);
+  bool setParameterValue(const std::string &, double, uint8_t);
   bool setParameterValue(const std::string &, float);
+  bool setParameterValue(const std::string &, float, uint8_t);
   bool setParameterValue(const std::string &, uint64_t);
+  bool setParameterValue(const std::string &, uint64_t, uint8_t);
   bool setParameterValue(const std::string &, int64_t);
+  bool setParameterValue(const std::string &, int64_t, uint8_t);
   bool setParameterValue(const std::string &, uint32_t);
+  bool setParameterValue(const std::string &, uint32_t, uint8_t);
   bool setParameterValue(const std::string &, int32_t);
+  bool setParameterValue(const std::string &, int32_t, uint8_t);
   bool setParameterValue(const std::string &, uint16_t);
+  bool setParameterValue(const std::string &, uint16_t, uint8_t);
   bool setParameterValue(const std::string &, int16_t);
+  bool setParameterValue(const std::string &, int16_t, uint8_t);
   bool setParameterValue(const std::string &, uint8_t);
+  bool setParameterValue(const std::string &, uint8_t, uint8_t);
   bool setParameterValue(const std::string &, int8_t);
+  bool setParameterValue(const std::string &, int8_t, uint8_t);
 
  public:
   static std::string toStr(const char *, size_t);
   static void toParamUnion(const std::string &, int, ParamUnion &);
+  static bool registerParamWithCompId(const std::string &, uint8_t);
+  static uint8_t getCompIdForParam(const std::string &);
 
  private:
   bool setParameterValue(const std::string &, const std::string &);
