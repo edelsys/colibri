@@ -113,9 +113,6 @@ class MavParamProto : public BaseMavlinkProtocol {
   virtual fflow::pointprec_t param_set_handler_ext(uint8_t *, size_t,
                                                    fflow::SparseAddress,
                                                    BaseComponentPtr);
-
-  bool decodeParameterValue(mavlink_param_value_t &, int,
-                            const MavParams::ParamUnion &);
 };
 
 }  // namespace fflow

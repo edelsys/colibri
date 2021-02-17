@@ -351,10 +351,11 @@ void MavParamProto::send_parameter(const char *param_id, int src_comp_id,
       MavParams::ParamUnion u;
       MavParams::toParamUnion(value, type, u);
 
-      if (decodeParameterValue(param_value, type, u)) {
+      if (u.decodeParameterValue(param_value)) {
+        LOG(INFO) << "Sending value = " << param_value.param_value << "("
+                  << u.toReadable() << ") of " << param_id_str;
         mavlink_msg_param_value_encode(roster->getMcastId(), src_comp_id, &msg,
                                        &param_value);
-
         this_thread::sleep_for(chrono::milliseconds(mssleep));
         send_mavlink_message(msg, src_comp_id, dst_sys_id, dst_comp_id);
       }
@@ -400,8 +401,7 @@ void MavParamProto::send_parameters(int src_comp_id, int dst_sys_id,
         MavParams::ParamUnion u;
         MavParams::toParamUnion(value, type, u);
 
-        bool result = decodeParameterValue(param_value, type, u);
-        if (result) {
+        if (u.decodeParameterValue(param_value)) {
           mavlink_msg_param_value_encode(roster->getMcastId(), src_comp_id,
                                          &msg, &param_value);
 
@@ -515,7 +515,7 @@ pointprec_t MavParamProto::param_set_handler(uint8_t *payload, size_t len,
   int comp_id = static_cast<int>(pset.target_component);
   if (!comp_id) comp_id = MavParams::getCompIdForParam(param_id);
 
-  LOG(INFO) << "SET PARAMETER: " << param_id << " = " << pset.param_value
+  LOG(INFO) << "TRY TO SET PARAMETER: " << param_id << " = " << pset.param_value
             << " FOR COMPONENT WITH ID=" << comp_id;
 
   RouteSystemPtr roster = getRoster();
@@ -531,62 +531,37 @@ pointprec_t MavParamProto::param_set_handler(uint8_t *payload, size_t len,
   MavParams::ParamUnion old_value;
   MavParams::toParamUnion(c->getParameterValue(param_id),
                           c->getParameterType(param_id), old_value);
+  assert(pset.param_type == old_value.getParameterType());
 
   MavParams::ParamUnion new_value;
-  new_value.param_float = pset.param_value;
-  new_value.type = pset.param_type;
-  assert(pset.param_type == old_value.type);
+  new_value.setParameterValue(pset.param_value, pset.param_type);
 
-  bool result = c->updateParameter(param_id, new_value);
-  if (!result) {
-    // just a check
-    MavParams::ParamUnion current_value;
-    MavParams::toParamUnion(c->getParameterValue(param_id),
-                            c->getParameterType(param_id), current_value);
-    assert(current_value.param_float == old_value.param_float);
+  if (memcmp(old_value.bytes, new_value.bytes, old_value.getParamSize())) {
+    bool result = c->updateParameter(param_id, new_value);
+    if (!result) {
+      // just a check
+      MavParams::ParamUnion current_value;
+      MavParams::toParamUnion(c->getParameterValue(param_id),
+                              c->getParameterType(param_id), current_value);
+      assert(0 == memcmp(current_value.bytes, old_value.bytes,
+                         current_value.getParamSize()));
+      LOG(INFO) << "Parameter " << param_id << " update failed";
+    } else {
+      MavParams::ParamUnion updated_value;
+      MavParams::toParamUnion(c->getParameterValue(param_id),
+                              c->getParameterType(param_id), updated_value);
+      assert(0 == memcmp(updated_value.bytes, new_value.bytes,
+                         updated_value.getParamSize()));
+      LOG(INFO) << "Parameter " << param_id
+                << " updated from old value = " << old_value.toReadable()
+                << " to new value = " << updated_value.toReadable();
+    }
+  } else {
+    LOG(INFO) << "Update not needed - same value";
   }
 
-  // send updated value
+  // always send value back no matter updated or not
   send_parameter(param_id.c_str(), comp_id, 0 /*sa.group_id, sa.instance_id*/);
 
   return 1.0;
-}
-
-bool MavParamProto::decodeParameterValue(mavlink_param_value_t &param_value,
-                                         int param_type,
-                                         const MavParams::ParamUnion &u) {
-  bool result = true;
-
-  switch (static_cast<MAV_PARAM_TYPE>(param_type)) {
-    case MAV_PARAM_TYPE_UINT8:
-      param_value.param_value = u.param_uint8;
-      break;
-    case MAV_PARAM_TYPE_INT8:
-      param_value.param_value = u.param_int8;
-      break;
-    case MAV_PARAM_TYPE_UINT16:
-      param_value.param_value = u.param_uint16;
-      break;
-    case MAV_PARAM_TYPE_INT16:
-      param_value.param_value = u.param_int16;
-      break;
-    case MAV_PARAM_TYPE_UINT32:
-      param_value.param_value = u.param_uint32;
-      break;
-    case MAV_PARAM_TYPE_INT32:
-      param_value.param_value = u.param_int32;
-      break;
-    case MAV_PARAM_TYPE_REAL32:
-      param_value.param_value = u.param_float;
-      break;
-    case MAV_PARAM_TYPE_REAL64:
-    case MAV_PARAM_TYPE_UINT64:
-    case MAV_PARAM_TYPE_INT64:
-    default:
-      LOG(ERROR) << "PARAMETER TYPE=" << param_type
-                 << " IS NOT SUPPORTED UNDER BASE PARAMETER PROTOCOL";
-      result = false;
-  }
-
-  return result;
 }

@@ -61,7 +61,20 @@ class MavParams {
       uint8_t param_uint8;
       uint8_t bytes[max_param_value_len];
     };
-    uint8_t type = MAV_PARAM_EXT_TYPE_CUSTOM;
+    uint8_t type;
+
+    ParamUnion();
+    uint8_t getParameterType() const { return type; }
+    size_t getParamSize() const;
+    std::string toReadable() const;
+    bool decodeParameterValue(mavlink_param_value_t &) const;
+    bool setParameterValue(float, uint8_t);
+    bool setParameterValueExt(const char *v, uint8_t t) {
+      (void)v;
+      (void)t;
+      // TODO:
+      return false;
+    }
   };
 
  public:
