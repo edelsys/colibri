@@ -88,9 +88,10 @@ class MavParamProto : public BaseMavlinkProtocol {
        }}};
 
  protected:
-  void send_parameter(int, int, int, int dest_comp_id = 0);
-  void send_parameter(const char *, int, int, int dest_comp_id = 0);
-  void send_parameters(int, int, int dest_comp_id = 0);
+  void send_parameter(int, int, int, int dest_comp_id = MAV_COMP_ID_ALL);
+  void send_parameter(const char *, int, int,
+                      int dest_comp_id = MAV_COMP_ID_ALL);
+  void send_parameters(int, int, int dest_comp_id = MAV_COMP_ID_ALL);
 
   virtual fflow::pointprec_t param_request_list_handler(uint8_t *, size_t,
                                                         fflow::SparseAddress,
@@ -102,9 +103,10 @@ class MavParamProto : public BaseMavlinkProtocol {
                                                fflow::SparseAddress,
                                                BaseComponentPtr);
 
-  void send_parameter_ext(int, int, int, int dest_comp_id = 0);
-  void send_parameter_ext(const char *, int, int, int dest_comp_id = 0);
-  void send_parameters_ext(int, int, int dest_comp_id = 0);
+  void send_parameter_ext(int, int, int, int dest_comp_id = MAV_COMP_ID_ALL);
+  void send_parameter_ext(const char *, int, int,
+                          int dest_comp_id = MAV_COMP_ID_ALL);
+  void send_parameters_ext(int, int, int dest_comp_id = MAV_COMP_ID_ALL);
 
   virtual fflow::pointprec_t param_request_list_handler_ext(
       uint8_t *, size_t, fflow::SparseAddress, BaseComponentPtr);

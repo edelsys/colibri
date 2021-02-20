@@ -180,7 +180,7 @@ pointprec_t MavParamProto::param_request_list_handler_ext(
     for (auto it = roster->getCBus().begin(); it != roster->getCBus().end();
          ++it) {
       // broadcast according to protocol
-      send_parameters_ext(it->first, sa.group_id /*, sa.instance_id*/);
+      send_parameters_ext(it->first, 0 /*sa.group_id, sa.instance_id*/);
     }
   } else {
     // normally, must not enter this branch
@@ -191,7 +191,7 @@ pointprec_t MavParamProto::param_request_list_handler_ext(
       return 1.0;
     }
 
-    send_parameters_ext(comp_id, sa.group_id /*, sa.instance_id*/);
+    send_parameters_ext(comp_id, 0 /*sa.group_id, sa.instance_id*/);
   }
 
   return 1.0;

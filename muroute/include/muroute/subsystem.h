@@ -89,9 +89,9 @@ class BaseMavlinkProtocol {
   virtual size_t get_table_len() const = 0;
 
  protected:
-  void send_ack(int, bool, int, int, int dest_comp_id = 0);
+  void send_ack(int, bool, int, int, int dest_comp_id = MAV_COMP_ID_ALL);
   void send_mavlink_message(mavlink_message_t &, int, int,
-                            int dest_comp_id = 0);
+                            int dest_comp_id = MAV_COMP_ID_ALL);
   bool is_zero(float val) { return std::abs(val) <= eps; }
 
  private:
