@@ -172,26 +172,27 @@ pointprec_t MavParamProto::param_request_list_handler_ext(
 
   RouteSystemPtr roster = getRoster();
   assert(roster);
-  assert(param_list_ext.target_system == roster->getMcastId());
 
-  if (param_list_ext.target_component == MAV_COMP_ID_ALL) {
-    LOG(INFO) << " BROADCAST REQUEST EXT OF ALL PARAMETERS";
+  if (param_list_ext.target_system == roster->getMcastId()) {
+    if (param_list_ext.target_component == MAV_COMP_ID_ALL) {
+      LOG(INFO) << " BROADCAST REQUEST EXT OF ALL PARAMETERS";
 
-    for (auto it = roster->getCBus().begin(); it != roster->getCBus().end();
-         ++it) {
-      // broadcast according to protocol
-      send_parameters_ext(it->first, 0 /*sa.group_id, sa.instance_id*/);
+      for (auto it = roster->getCBus().begin(); it != roster->getCBus().end();
+           ++it) {
+        // broadcast according to protocol
+        send_parameters_ext(it->first, 0 /*sa.group_id, sa.instance_id*/);
+      }
+    } else {
+      // normally, must not enter this branch
+      int comp_id = static_cast<int>(param_list_ext.target_component);
+
+      if (!roster->getCBus().has_component(comp_id)) {
+        LOG(INFO) << "NO COMPONENT WITH ID=" << comp_id;
+        return 1.0;
+      }
+
+      send_parameters_ext(comp_id, 0 /*sa.group_id, sa.instance_id*/);
     }
-  } else {
-    // normally, must not enter this branch
-    int comp_id = static_cast<int>(param_list_ext.target_component);
-
-    if (!roster->getCBus().has_component(comp_id)) {
-      LOG(INFO) << "NO COMPONENT WITH ID=" << comp_id;
-      return 1.0;
-    }
-
-    send_parameters_ext(comp_id, 0 /*sa.group_id, sa.instance_id*/);
   }
 
   return 1.0;
@@ -208,26 +209,27 @@ pointprec_t MavParamProto::param_request_read_handler_ext(
 
   RouteSystemPtr roster = getRoster();
   assert(roster);
-  assert(pread_ext.target_system == roster->getMcastId());
 
-  LOG(INFO) << " REQUESTED PARAMETER READ EXT FOR COMPONENT WITH ID= "
-            << static_cast<int>(pread_ext.target_component);
+  if (pread_ext.target_system == roster->getMcastId()) {
+    LOG(INFO) << " REQUESTED PARAMETER READ EXT FOR COMPONENT WITH ID= "
+              << static_cast<int>(pread_ext.target_component);
 
-  int comp_id = static_cast<int>(pread_ext.target_component);
-  if (!roster->getCBus().has_component(comp_id)) {
-    LOG(INFO) << "NO COMPONENT WITH ID=" << comp_id;
-    return 1.0;
+    int comp_id = static_cast<int>(pread_ext.target_component);
+    if (!roster->getCBus().has_component(comp_id)) {
+      LOG(INFO) << "NO COMPONENT WITH ID=" << comp_id;
+      return 1.0;
+    }
+
+    // send broadcast
+    if (pread_ext.param_index >= 0)
+      send_parameter_ext(pread_ext.param_index, comp_id, 0
+                         /*sa.group_id, sa.instance_id*/);
+    else
+      send_parameter_ext(
+          MavParams::toStr(pread_ext.param_id, MavParams::max_param_id_len)
+              .c_str(),
+          comp_id, 0 /*sa.group_id, sa.instance_id*/);
   }
-
-  // send broadcast
-  if (pread_ext.param_index >= 0)
-    send_parameter_ext(pread_ext.param_index, comp_id, 0
-                       /*sa.group_id, sa.instance_id*/);
-  else
-    send_parameter_ext(
-        MavParams::toStr(pread_ext.param_id, MavParams::max_param_id_len)
-            .c_str(),
-        comp_id, 0 /*sa.group_id, sa.instance_id*/);
 
   return 1.0;
 }
@@ -244,22 +246,20 @@ pointprec_t MavParamProto::param_set_handler_ext(uint8_t *payload, size_t len,
   mavlink_param_ext_set_t pset_ext;
   mavlink_msg_param_ext_set_decode(imsg, &pset_ext);
 
+  RouteSystemPtr roster = getRoster();
+  assert(roster);
+
   string param_id =
       MavParams::toStr(pset_ext.param_id, MavParams::max_param_id_len);
-  if (param_id.empty()) {
-    assert(0);
+
+  if (param_id.empty() || pset_ext.target_system != roster->getMcastId())
     return 1.0;
-  }
 
   int comp_id = static_cast<int>(pset_ext.target_component);
   if (!comp_id) comp_id = MavParams::getCompIdForParam(param_id);
 
   LOG(INFO) << "SET PARAMETER EXT: " << param_id << " = "
             << pset_ext.param_value << " FOR COMPONENT WITH ID=" << comp_id;
-
-  RouteSystemPtr roster = getRoster();
-  assert(roster);
-  assert(pset_ext.target_system == roster->getMcastId());
 
   BaseComponentPtr c = roster->getCBus().get_component(comp_id);
   if (!c) {
@@ -434,26 +434,27 @@ pointprec_t MavParamProto::param_request_list_handler(uint8_t *payload,
 
   RouteSystemPtr roster = getRoster();
   assert(roster);
-  assert(param_list.target_system == roster->getMcastId());
 
-  if (param_list.target_component == MAV_COMP_ID_ALL) {
-    LOG(INFO) << "BROADCAST REQUEST OF ALL PARAMETERS";
+  if (param_list.target_system == roster->getMcastId()) {
+    if (param_list.target_component == MAV_COMP_ID_ALL) {
+      LOG(INFO) << "BROADCAST REQUEST OF ALL PARAMETERS";
 
-    for (auto it = roster->getCBus().begin(); it != roster->getCBus().end();
-         ++it) {
-      // broadcast according to protocol
-      send_parameters(it->first, 0 /*sa.group_id, sa.instance_id*/);
+      for (auto it = roster->getCBus().begin(); it != roster->getCBus().end();
+           ++it) {
+        // broadcast according to protocol
+        send_parameters(it->first, 0 /*sa.group_id, sa.instance_id*/);
+      }
+    } else {
+      // must not enter this branch normally
+      int comp_id = static_cast<int>(param_list.target_component);
+
+      if (!roster->getCBus().has_component(comp_id)) {
+        LOG(INFO) << "NO COMPONENT WITH ID=" << comp_id;
+        return 1.0;
+      }
+
+      send_parameters(comp_id, 0 /*sa.group_id, sa.instance_id*/);
     }
-  } else {
-    // must not enter this branch normally
-    int comp_id = static_cast<int>(param_list.target_component);
-
-    if (!roster->getCBus().has_component(comp_id)) {
-      LOG(INFO) << "NO COMPONENT WITH ID=" << comp_id;
-      return 1.0;
-    }
-
-    send_parameters(comp_id, 0 /*sa.group_id, sa.instance_id*/);
   }
 
   return 1.0;
@@ -472,25 +473,26 @@ pointprec_t MavParamProto::param_request_read_handler(uint8_t *payload,
 
   RouteSystemPtr roster = getRoster();
   assert(roster);
-  assert(pread.target_system == roster->getMcastId());
 
-  LOG(INFO) << "REQUESTED PARAMETER READ FOR COMPONENT WITH ID="
-            << static_cast<int>(pread.target_component);
+  if (pread.target_system == roster->getMcastId()) {
+    LOG(INFO) << "REQUESTED PARAMETER READ FOR COMPONENT WITH ID="
+              << static_cast<int>(pread.target_component);
 
-  int comp_id = static_cast<int>(pread.target_component);
-  if (!roster->getCBus().has_component(comp_id)) {
-    LOG(INFO) << "NO COMPONENT WITH ID=" << comp_id;
-    return 1.0;
+    int comp_id = static_cast<int>(pread.target_component);
+    if (!roster->getCBus().has_component(comp_id)) {
+      LOG(INFO) << "NO COMPONENT WITH ID=" << comp_id;
+      return 1.0;
+    }
+
+    // send broadcast
+    if (pread.param_index >= 0)
+      send_parameter(pread.param_index, comp_id, 0
+                     /*sa.group_id, sa.instance_id*/);
+    else
+      send_parameter(
+          MavParams::toStr(pread.param_id, MavParams::max_param_id_len).c_str(),
+          comp_id, 0 /*sa.group_id, sa.instance_id*/);
   }
-
-  // send broadcast
-  if (pread.param_index >= 0)
-    send_parameter(pread.param_index, comp_id, 0
-                   /*sa.group_id, sa.instance_id*/);
-  else
-    send_parameter(
-        MavParams::toStr(pread.param_id, MavParams::max_param_id_len).c_str(),
-        comp_id, 0 /*sa.group_id, sa.instance_id*/);
 
   return 1.0;
 }
@@ -507,20 +509,18 @@ pointprec_t MavParamProto::param_set_handler(uint8_t *payload, size_t len,
 
   string param_id =
       MavParams::toStr(pset.param_id, MavParams::max_param_id_len);
-  if (param_id.empty()) {
-    assert(0);
+
+  RouteSystemPtr roster = getRoster();
+  assert(roster);
+
+  if (param_id.empty() || pset.target_system != roster->getMcastId())
     return 1.0;
-  }
 
   int comp_id = static_cast<int>(pset.target_component);
   if (!comp_id) comp_id = MavParams::getCompIdForParam(param_id);
 
   LOG(INFO) << "TRY TO SET PARAMETER: " << param_id << " = " << pset.param_value
             << " FOR COMPONENT WITH ID=" << comp_id;
-
-  RouteSystemPtr roster = getRoster();
-  assert(roster);
-  assert(pset.target_system == roster->getMcastId());
 
   BaseComponentPtr c = roster->getCBus().get_component(comp_id);
   if (!c) {
