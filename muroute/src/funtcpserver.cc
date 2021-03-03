@@ -38,6 +38,13 @@
 using namespace fflow;
 using namespace fflow::proto;
 
+#if BOOST_VERSION >= 107000
+#define GET_IO_SERVICE(s) \
+  ((boost::asio::io_context &)(s).get_executor().context())
+#else
+#define GET_IO_SERVICE(s) ((s).get_io_service())
+#endif
+
 EdgeTcpServer::EdgeTcpServer() : acceptor_(*this) {
   AbstractEdgeInterface::name = "EdgeTcpServer";
 }
@@ -114,8 +121,9 @@ void EdgeTcpServer::sendtoraw(std::vector<uint8_t> &msg,
 
 void EdgeTcpServer::accept_top() {
   ioas_err_t error;
+
   tcp_connection::pointer new_connection =
-      tcp_connection::create(acceptor_.get_io_service());
+      tcp_connection::create(GET_IO_SERVICE(acceptor_));
 
   acceptor_.async_accept(
       new_connection->socket(),
