@@ -8,29 +8,16 @@ env:
 
 jobs:
   build:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-18.04
-
+    
     steps:
     - uses: actions/checkout@v2
     - uses: uraimo/run-on-arch-action@v2.0.9
       
       with:
-        arch: armv7
+        arch: aarch64
         distro: ubuntu18.04
-        githubToken: ${{ github.token }}
-
-        name: Create Build Environment
-        # Some projects don't allow in-source building, so create a separate build directory
-        # We'll use this as our working directory for all subsequent commands
-        install: | 
-          cmake -E make_directory ${{github.workspace}}/build
-     
-        shell: bash
-        working-directory: ${{github.workspace}}/build
         run: |
+          cmake -E make_directory ${{github.workspace}}/build
           cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
           cmake --build . --config $BUILD_TYPE
