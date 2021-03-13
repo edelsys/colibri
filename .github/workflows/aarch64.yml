@@ -1,27 +1,21 @@
 name: aarch64
-
 on: [push]
-
-env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
-
 jobs:
   build:
     runs-on: ubuntu-18.04
-    
     steps:
     - uses: actions/checkout@v2
     - uses: uraimo/run-on-arch-action@v2.0.9
-      
       with:
-        arch: aarch64
+        arch: armv7
         distro: ubuntu18.04
         install: |
           apt-get update -q -y
           apt-get install -q -y git cmake libev-dev libboost-all-dev 
           apt-get install -q -y libasio-dev libeigen3-dev libgoogle-glog-dev
         run: |
+          uname -a
+          echo ::set-output name=uname::$(uname -a)
           cmake -E make_directory ${{github.workspace}}/build
           cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
           cmake --build . --config $BUILD_TYPE
