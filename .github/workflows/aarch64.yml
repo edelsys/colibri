@@ -17,6 +17,10 @@ jobs:
       with:
         arch: aarch64
         distro: ubuntu18.04
+        install: |
+          apt-get update -q -y
+          apt-get install -q -y git cmake libev-dev libboost-all-dev 
+          apt-get install -q -y libasio-dev libeigen3-dev libgoogle-glog-dev
         run: |
           cmake -E make_directory ${{github.workspace}}/build
           cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
