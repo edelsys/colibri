@@ -30,12 +30,11 @@
 #ifndef DETACHEDFUNCTION_H
 #define DETACHEDFUNCTION_H
 
+#include <boost/pool/object_pool.hpp>
+#include <boost/pool/pool.hpp>
 #include <functional>
 #include <memory>
 #include <mutex>
-
-#include <boost/pool/object_pool.hpp>
-#include <boost/pool/pool.hpp>
 
 #define DETACHED_SHARED_PTR
 

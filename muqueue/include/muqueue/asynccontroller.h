@@ -135,9 +135,7 @@ class AsyncController : public ev::dynamic_loop {
     return drain;
   }
 
-  struct ev_loop *getNativeHandler() {
-    return raw_loop;
-  }
+  struct ev_loop *getNativeHandler() { return raw_loop; }
 
  private:
   ev::idle idle_w;       // used to prevent busyloop

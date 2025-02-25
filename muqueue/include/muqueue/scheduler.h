@@ -35,6 +35,7 @@
 #include <functional>
 #include <future>
 #include <mutex>
+#include <queue>
 #include <set>
 #include <vector>
 
@@ -60,7 +61,9 @@ class WQueue {
   std::shared_ptr<std::thread> th;  ///< worker thread
 
   boost::circular_buffer<DetachedFunctionBasePtr>
-      wqueue;  ///< workqueu itself (curcular buffer)
+      wqueue;  ///< workqueue itself (curcular buffer)
+  // std::queue<DetachedFunctionBasePtr>
+  //     wqueue;  ///< workqueue itself (curcular buffer)
 
   // noncopyable
   WQueue(const WQueue &) = delete;
@@ -87,6 +90,7 @@ class WQueue {
   void worker();
 
   size_t getsize() { return wqueue.capacity(); }
+  // size_t getsize() { return wqueue.size(); }
 
   const boost::circular_buffer<DetachedFunctionBasePtr> &getbuf() const;
 };
@@ -157,10 +161,10 @@ struct TaskScheduler {
     instance()->queues.size();
     for (const auto &queue : instance()->queues) {
       __UNUSED__ auto cbuf = queue->getbuf();
-      __UNUSED__ size_t cap = cbuf.capacity();
+      // __UNUSED__ size_t cap = cbuf.capacity();
       __UNUSED__ size_t siz = cbuf.size();
-      __UNUSED__ size_t max = cbuf.max_size();
-      __UNUSED__ bool full = cbuf.full();
+      // __UNUSED__ size_t max = cbuf.max_size();
+      // __UNUSED__ bool full = cbuf.full();
     }
   }
 
@@ -199,26 +203,26 @@ struct TaskScheduler {
 };
 
 template <typename T>
-void post_function(const std::function<T()> &f, int prio = 0) {
+bool post_function(const std::function<T()> &f, int prio = 0) {
 #ifdef DETACHED_SHARED_PTR
   DetachedFunctionBasePtr t = std::make_shared<DetachedFunction>(f);
 #else
   DetachedFunctionBasePtr t = new DetachedFunction(f);
 #endif
-  TaskScheduler::enqueue(t, prio);
-  return;
+  return TaskScheduler::enqueue(t, prio);
+  // return;
 }
 
 template <typename Ret, typename... Args>
-void post_function2(const std::function<Ret(Args...)> &f, Args... args) {
+bool post_function2(const std::function<Ret(Args...)> &f, Args... args) {
 #ifdef DETACHED_SHARED_PTR
   DetachedFunctionBasePtr t =
       std::make_shared<DetachedFunction2<Ret, Args...>>(f, args...);
 #else
   DetachedFunctionBasePtr t = new DetachedFunction2<Ret, Args...>(f, args...);
 #endif
-  TaskScheduler::enqueue(t);
-  return;
+  return TaskScheduler::enqueue(t);
+  // return;
 }
 
 }  // namespace fflow

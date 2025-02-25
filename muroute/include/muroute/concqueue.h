@@ -15,7 +15,7 @@ class ConcQueue {
   virtual ~ConcQueue() = default;
 
   template <typename... Args>
-  void enqueue(Args &&... args) {
+  void enqueue(Args &&...args) {
     addData_protected([&] { queue_.emplace(std::forward<Args>(args)...); });
   }
 
@@ -141,7 +141,7 @@ class ConcStack {
   virtual ~ConcStack() = default;
 
   template <typename... Args>
-  void push(Args &&... args) {
+  void push(Args &&...args) {
     addData_protected([&] { stack_.emplace(std::forward<Args>(args)...); });
   }
 

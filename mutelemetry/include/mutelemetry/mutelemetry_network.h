@@ -29,16 +29,16 @@
 
 #pragma once
 
-#include <atomic>
-#include <functional>
-
 #include <muroute/concqueue.h>
 #include <muroute/mavlink2/common/mavlink.h>
 #include <muroute/subsystem.h>
 
+#include <atomic>
+#include <functional>
+
 #include "mutelemetry_tools.h"
 
-//#define CHECK_PARSE_VALIDITY_STREAMER
+// #define CHECK_PARSE_VALIDITY_STREAMER
 
 namespace mutelemetry_network {
 

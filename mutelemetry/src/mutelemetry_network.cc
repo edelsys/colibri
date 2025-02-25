@@ -138,9 +138,9 @@ fflow::pointprec_t MutelemetryStreamer::proto_logging_ack_handler(
               : StreamerState::STATE_RESEND_DEF;
       bool result = set_state(state, new_state);
       if (!result) {
-        LOG(ERROR) << "Another thread has changed the state: "
-                   << "Was => " << state << " Now => " << state_.load()
-                   << " Must be => " << new_state;
+        LOG(ERROR) << "Another thread has changed the state: " << "Was => "
+                   << state << " Now => " << state_.load() << " Must be => "
+                   << new_state;
         assert(0);
       }
     } break;
@@ -273,9 +273,9 @@ void MutelemetryStreamer::sync_loop() {
         StreamerState new_state = StreamerState::STATE_ACK_WAIT;
         bool result = set_state(state, new_state);
         if (!result) {
-          LOG(ERROR) << "Another thread has changed the state: "
-                     << "Was => " << state << " Now => " << state_
-                     << " Must be => " << new_state;
+          LOG(ERROR) << "Another thread has changed the state: " << "Was => "
+                     << state << " Now => " << state_ << " Must be => "
+                     << new_state;
           assert(0);
         }
       } break;
@@ -284,9 +284,9 @@ void MutelemetryStreamer::sync_loop() {
         StreamerState new_state = StreamerState::STATE_SEND_DEF;
         bool result = set_state(state, new_state);
         if (!result) {
-          LOG(ERROR) << "Another thread has changed the state: "
-                     << "Was => " << state << " Now => " << state_
-                     << " Must be => " << new_state;
+          LOG(ERROR) << "Another thread has changed the state: " << "Was => "
+                     << state << " Now => " << state_ << " Must be => "
+                     << new_state;
           assert(0);
         }
         seq_++;
@@ -306,9 +306,9 @@ void MutelemetryStreamer::sync_loop() {
           StreamerState new_state = StreamerState::STATE_RESEND_DEF;
           bool result = set_state(state, new_state);
           if (!result) {
-            LOG(ERROR) << "Another thread has changed the state: "
-                       << "Was => " << state << " Now => " << state_
-                       << " Must be => " << new_state;
+            LOG(ERROR) << "Another thread has changed the state: " << "Was => "
+                       << state << " Now => " << state_ << " Must be => "
+                       << new_state;
             assert(0);
           }
         }

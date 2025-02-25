@@ -42,7 +42,7 @@ static void schedule_funcs(SparseMemory* /*spmem*/) {
   //  if (spmem != nullptr) {
   FunctionTLB::getTLB().add_argtype_detector(
       tArgType(tArg()),
-      [](tTime ts, const tArg & /*args*/) -> fflow::pointprec_t {
+      [](tTime ts, const tArg& /*args*/) -> fflow::pointprec_t {
         std::cerr << __PRETTY_FUNCTION__ << "() " << ts << std::endl;
         return 1.0;
       });

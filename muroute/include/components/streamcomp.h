@@ -163,8 +163,7 @@ class MediaComponent : public fflow::BaseComponent {
     if (id >= MAV_COMP_ID_CAMERA && id <= MAV_COMP_ID_CAMERA6) setId(id);
   }
 
-  virtual ~MediaComponent() { /* stop(); */
-  }
+  virtual ~MediaComponent() { /* stop(); */ }
 
  public:
   size_t getNumberOfStreams() const { return streams_.size(); }

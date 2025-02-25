@@ -85,8 +85,8 @@ void BaseMavlinkProtocol::send_mavlink_message(mavlink_message_t &msg,
     roster_->__send(msg, src, {dst});
   } else {
     LOG(ERROR) << "Failed to send message from <" << src_sys_id << ":"
-               << src_comp_id << "> to "
-               << "<" << dst_sys_id << ":" << dst_comp_id << ">";
+               << src_comp_id << "> to " << "<" << dst_sys_id << ":"
+               << dst_comp_id << ">";
   }
 }
 
@@ -116,8 +116,8 @@ RouteSystem::RouteSystem()
 
   setParameterValue(PARAMETER_FORWARDING, getForwarding(), getId());
 
-  addComponent(this);
-  addComponent(new BridgeComponent());
+  // addComponent(this);
+  //  addComponent(new BridgeComponent());
 }
 
 /*virtual*/ RouteSystem::~RouteSystem() {
@@ -234,8 +234,8 @@ bool RouteSystem::__is_forward_addr(const SparseAddress &addr) const {
 /// \param forwarded
 /// ************************************************
 void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
-                         const list<fflow::SparseAddress> &dst,
-                         bool forwarded) const {
+                         const list<fflow::SparseAddress> &dst, bool forwarded,
+                         int edge_id) const {
   bool has_bcast = false;
   for (const auto &d : dst) {
     if (__is_bcast_addr(d)) {
@@ -254,7 +254,7 @@ void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
 
   unordered_map<uint64_t, route_row_t>::iterator route;
   {
-    lock_guard<mutex> lock(routelock);
+    // lock_guard<mutex> lock(routelock);
     route = route_table.find(fromaddr64);
 
     if (route != route_table.end()) {
@@ -268,6 +268,7 @@ void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
       auto ifc_id = get<1>(route->second);
       src_edge_id = ifc->edge_id;
       srcna = ifc_id;
+      // LOG(INFO) << "BCAST::: " << edge_id << " =? " << src_edge_id;
     }
   }
 
@@ -287,7 +288,7 @@ void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
 
     {
       //      _edges.reserve(edges.size());
-      lock_guard<mutex> lock(edgeslock);
+      // lock_guard<mutex> lock(edgeslock);
       for (const auto &edg : edges) _edges.emplace(edg);
     }
 
@@ -318,6 +319,8 @@ void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
       // trim buffer to actual message size on wire
       rawbuf.resize(finlen);
 
+      // if (edge_id == edgei.second->edge_id) return;
+
       // send to underlyling transport
       edgei.second->sendtoraw(rawbuf, na, srcna, src_edge_id);
 
@@ -331,7 +334,7 @@ void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
           SPARSE_ADDR_TO_UINT64(dstaddr.group_id, dstaddr.instance_id);
 
       {
-        lock_guard<mutex> lock(routelock);
+        // lock_guard<mutex> lock(routelock);
         route = route_table.find(dstaddr64);
       }
 
@@ -357,6 +360,8 @@ void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
             &msg, srcAddr.group_id, srcAddr.instance_id, edgei->edge_id, lmin,
             msg.len, crc_extra);
 
+      // if (edgei->accept_msg(rawbuf) ==
+      //     AbstractEdgeInterface::AcceptState::Accepted) {
       // serialize into raw buffer
       finlen = mavlink_msg_to_send_buffer(&rawbuf[0], &msg);
 
@@ -366,6 +371,7 @@ void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
       rawbuf.resize(finlen);
 
       edgei->sendtoraw(rawbuf, na, srcna, src_edge_id);
+      // }
     }
 }
 
@@ -435,7 +441,7 @@ int RouteSystem::receive(uint32_t edge_id, vector<uint8_t> &msgdata,
                          const native_addr_t &from) {
   shared_ptr<AbstractEdgeInterface> __aeiptr;
   {
-    lock_guard<mutex> lock(edgeslock);
+    // lock_guard<mutex> lock(edgeslock);
     auto edgei = edges.find(edge_id);
 
     if (edgei == edges.end()) {
@@ -459,7 +465,7 @@ int RouteSystem::receive(uint32_t edge_id, vector<uint8_t> &msgdata,
     assert(__aeiptr);
 
     {
-      lock_guard<mutex> lock(__aeiptr->feasaddrlock);
+      // lock_guard<mutex> lock(__aeiptr->feasaddrlock);
       __aeiptr->feasable_addrs.insert(newaddr);
     }
 
@@ -559,17 +565,40 @@ fflow::SparseAddress RouteSystem::__mandatory_proto_cb(
             (pmsg->msgid == MAVLINK_MSG_ID_PARAM_EXT_SET)) {
           priorityQOS = 1;
         }
-        fflow::post_function<void>(
+
+        // if (pmsg->msgid == MAVLINK_MSG_ID_PARAM_VALUE) {
+        //   LOG(INFO) << "PARAM VAL Forward [" <<
+        //   static_cast<int>(pmsg->compid)
+        //             << " ::" << from_group_id << ", " << from_instance_id
+        //             << ", " << to_group_id << ", " << to_instance_id << "]";
+        // } else if (pmsg->msgid == MAVLINK_MSG_ID_PARAM_REQUEST_LIST) {
+        //   LOG(INFO) << "PARAM LIST  Forward [" <<
+        //   static_cast<int>(pmsg->compid)
+        //             << " ::" << from_group_id << ", " << from_instance_id
+        //             << ", " << to_group_id << ", " << to_instance_id << "]";
+        // } else if (pmsg->msgid == MAVLINK_MSG_ID_PARAM_REQUEST_READ) {
+        //   LOG(INFO) << "PARAM READ Forward [" <<
+        //   static_cast<int>(pmsg->compid)
+        //             << " ::" << from_group_id << ", " << from_instance_id
+        //             << ", " << to_group_id << ", " << to_instance_id << "]";
+        // }
+        // else {
+        //   LOG(INFO) << "msg[" << static_cast<int>(pmsg->compid)
+        //             << " ::" << from_group_id << ", " << from_instance_id
+        //             << ", " << to_group_id << ", " << to_instance_id << "]";
+        // }
+
+        bool res = fflow::post_function<void>(
             [this, pmsg, from_group_id, from_instance_id, to_group_id,
-             to_instance_id](void) -> void {
+             to_instance_id, chan](void) -> void {
               fflow::SparseAddress __srcAddr(from_group_id, from_instance_id,
                                              0);
               fflow::SparseAddress __tgtAddr(to_group_id, to_instance_id, 0);
 
-              __send(*pmsg, __srcAddr, {__tgtAddr}, true);
+              __send(*pmsg, __srcAddr, {__tgtAddr}, true, chan);
             },
             priorityQOS);
-
+        // LOG(INFO) << "ENQUEUE RET=" << res;
       } else {
         VLOG_IF(5, true) << "Forwarding is not enabled";
       }
@@ -592,7 +621,7 @@ fflow::SparseAddress RouteSystem::__mandatory_proto_cb(
         }
       }
     }  // if
-  }    // for
+  }  // for
 
   return move(srcAddr);
 }

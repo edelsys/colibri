@@ -14,6 +14,7 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -1560,7 +1561,8 @@ class parser {
 #elif defined __GNUC__
   __attribute__((noreturn))
 #endif
-      void throw_parse_exception(const std::string& err) {
+  void
+  throw_parse_exception(const std::string& err) {
     throw parse_exception{err, line_number_};
   }
 

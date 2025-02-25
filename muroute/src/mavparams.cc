@@ -1,12 +1,12 @@
 #include "muroute/mavparams.h"
 
 #include <assert.h>
+#include <glog/logging.h>
+
 #include <algorithm>
 #include <cstring>
 #include <sstream>
 #include <string>
-
-#include <glog/logging.h>
 
 using namespace std;
 using namespace fflow;

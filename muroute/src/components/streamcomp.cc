@@ -30,7 +30,6 @@
 #include "components/streamcomp.h"
 
 #include <assert.h>
-
 #include <muqueue/erqperiodic.h>
 
 using namespace std;

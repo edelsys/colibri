@@ -29,6 +29,8 @@
 
 #include "muroute/mavparamproto.h"
 
+#include <glog/logging.h>
+
 #include <cstddef>
 #include <thread>
 
@@ -123,7 +125,7 @@ void MavParamProto::send_parameters_ext(int src_comp_id, int dst_sys_id,
 
   if (param_id_to_value.size()) {
     mavlink_param_ext_value_t param_ext_value;
-    int mssleep = 20;
+    int mssleep = 2;
     param_ext_value.param_count = param_id_to_value.size();
     assert(param_ext_value.param_count == comp->getParameterCount());
 
@@ -369,14 +371,17 @@ void MavParamProto::send_parameters(int src_comp_id, int dst_sys_id,
   BaseComponentPtr comp = roster->getCBus().get_component(src_comp_id);
   assert(comp);
 
-  LOG(INFO) << "REQUESTED ALL PARAMETERS FOR COMPONENT WITH ID="
+  // LOG(ERROR) << "REQUESTED ALL PARAMETERS FOR COMPONENT WITH ID="
+  //            << static_cast<int>(comp->getId());
+
+  std::cerr << "REQUESTED ALL PARAMETERS FOR COMPONENT WITH ID="
             << static_cast<int>(comp->getId());
 
   const auto &param_id_to_value = comp->getParameterList();
 
   if (param_id_to_value.size()) {
     mavlink_param_value_t param_value;
-    int mssleep = 20, send_cntr = 0;
+    int mssleep = 2, send_cntr = 0;
 
     param_value.param_count = param_id_to_value.size();
     assert(param_value.param_count == comp->getParameterCount());
@@ -408,6 +413,8 @@ void MavParamProto::send_parameters(int src_comp_id, int dst_sys_id,
           this_thread::sleep_for(chrono::milliseconds(mssleep));
           send_mavlink_message(msg, src_comp_id, dst_sys_id, dst_comp_id);
           ++send_cntr;
+          std::cerr << "PARAM SENT " << send_cntr << " PARAMETERS OF TOTAL "
+                    << param_id_to_value.size();
         }
       }
     }
@@ -437,10 +444,13 @@ pointprec_t MavParamProto::param_request_list_handler(uint8_t *payload,
 
   if (param_list.target_system == roster->getMcastId()) {
     if (param_list.target_component == MAV_COMP_ID_ALL) {
-      LOG(INFO) << "BROADCAST REQUEST OF ALL PARAMETERS";
+      LOG(INFO) << "BROADCAST REQUEST OF ALL PARAMETERS cbus siz="
+                << roster->getCBus().size();
 
       for (auto it = roster->getCBus().begin(); it != roster->getCBus().end();
            ++it) {
+        LOG(INFO) << "Sending for COMP=" << it->first;
+        std::cerr << "Sending for COMP=" << it->first;
         // broadcast according to protocol
         send_parameters(it->first, 0 /*sa.group_id, sa.instance_id*/);
       }
