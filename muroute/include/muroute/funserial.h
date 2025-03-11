@@ -30,13 +30,12 @@
 #ifndef FUNSERIAL_H
 #define FUNSERIAL_H
 
+#include <boost/asio.hpp>
 #include <cstdint>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
-
-#include <boost/asio.hpp>
 
 namespace ioas = boost::asio;
 namespace ioasip = boost::asio::ip;

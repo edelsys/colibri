@@ -29,6 +29,8 @@
 
 #pragma once
 
+#include <muroute/concqueue.h>
+
 #include <array>
 #include <atomic>
 #include <cassert>
@@ -39,8 +41,6 @@
 #include <stack>
 #include <string>
 #include <vector>
-
-#include <muroute/concqueue.h>
 
 #include "mutelemetry_tools.h"
 

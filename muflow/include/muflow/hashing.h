@@ -69,9 +69,9 @@ constexpr uint32_t murmur3_32_end3(uint32_t k, const char* key) {
 
 constexpr uint32_t murmur3_32_end(uint32_t hash, const char* key, int rem) {
   return rem == 0 ? hash
-                  : hash ^ (rem == 3 ? murmur3_32_end3(0, key)
-                                     : rem == 2 ? murmur3_32_end2(0, key)
-                                                : murmur3_32_end1(0, key));
+                  : hash ^ (rem == 3   ? murmur3_32_end3(0, key)
+                            : rem == 2 ? murmur3_32_end2(0, key)
+                                       : murmur3_32_end1(0, key));
 }
 
 constexpr uint32_t murmur3_32_final1(uint32_t hash) {
@@ -142,8 +142,8 @@ uint32_t _fnv1a_hash2(const char*);
 }  // namespace fflow
 
 #define __ik3(x, l) cx::murmur::murmur3_32_value(x, l, 0)
-//#define _hK3(x) cx::murmur::murmur3_32_value(x, sizeof(x), 0)
-//#define _hK3(x) fflow::hash::_fnv1a_hash(x)
+// #define _hK3(x) cx::murmur::murmur3_32_value(x, sizeof(x), 0)
+// #define _hK3(x) fflow::hash::_fnv1a_hash(x)
 #define _hK3(x) fflow::_fnv1a_hash2(x)
 
 #endif  // HASHING_H

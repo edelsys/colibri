@@ -27,9 +27,9 @@
  * SOFTWARE.
  */
 
-#include <utility>
-
 #include <glog/logging.h>
+
+#include <utility>
 
 #include "muflow/muflow.h"
 #include "muroute/funcan.h"

@@ -29,15 +29,15 @@
 
 #include "mutelemetry/mutelemetry_logger.h"
 
-#include <cassert>
-#include <thread>
-
 #include <glog/logging.h>
 #include <muqueue/erqperiodic.h>
 
-//#define CHECK_PARSE_VALIDITY_LOGGER
-//#define USE_POST_FUNCTION_ON_IO
-//#define USE_POST_FUNCTION_FOR_MAIN_LOOP
+#include <cassert>
+#include <thread>
+
+// #define CHECK_PARSE_VALIDITY_LOGGER
+// #define USE_POST_FUNCTION_ON_IO
+// #define USE_POST_FUNCTION_FOR_MAIN_LOOP
 
 using namespace std;
 using namespace fflow;

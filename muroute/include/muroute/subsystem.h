@@ -146,7 +146,7 @@ class RouteSystem final : public BaseComponent {
 
   uint32_t add_edge_transport(std::shared_ptr<AbstractEdgeInterface>);
 
-  int receive(uint32_t, std::vector<uint8_t> &, const native_addr_t &);
+  int receive(uint32_t, const std::vector<uint8_t> &, const native_addr_t &);
 
   /// **************************************
   ///  Getters/Setters
@@ -176,7 +176,8 @@ class RouteSystem final : public BaseComponent {
   bool updateParameterImpl(const std::string &, const ParamUnion &) override;
 
   void __send(mavlink_message_t &, const SparseAddress &,
-              const std::list<SparseAddress> &, bool forwarded = false) const;
+              const std::list<SparseAddress> &, bool forwarded = false,
+              int edge_id = -1) const;
   inline bool __is_local_addr(const SparseAddress &) const;
   inline bool __is_forward_addr(const SparseAddress &) const;
   inline bool __is_bcast_addr(const SparseAddress &) const;
@@ -188,7 +189,7 @@ class RouteSystem final : public BaseComponent {
   std::vector<f_protocol_handler> protoqueue;
 
   /// < guards
-  mutable std::mutex recvlock;
+  // mutable std::mutex recvlock;
   mutable std::mutex routelock;
   mutable std::mutex edgeslock;
 

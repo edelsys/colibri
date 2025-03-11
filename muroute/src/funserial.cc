@@ -90,6 +90,7 @@ void EdgeSerial::recv_top() {
 
   ser_port.async_read_some(
       buf, [this](const ioas_err_t &error, std::size_t bytes) -> void {
+        // aligned
         std::vector<uint8_t> msgdata(packet_buffer.msgdata.begin(),
                                      packet_buffer.msgdata.begin() + bytes);
         recv_bottom(std::move(msgdata), error);

@@ -47,17 +47,17 @@ boost::object_pool<DetachedFunction> &DetachedFunction::getpool() {
 }
 
 void *DetachedFunction::operator new(size_t /*siz*/) {
-  std::lock_guard<std::mutex> lock(*accesslock);
+  // std::lock_guard<std::mutex> lock(*accesslock);
   void *p = getpool().malloc();
   return p;
 }
 
 void DetachedFunction::operator delete(void *o) {
-  std::lock_guard<std::mutex> lock(*accesslock);
+  // std::lock_guard<std::mutex> lock(*accesslock);
   getpool().free(reinterpret_cast<DetachedFunction *>(o));
 }
 
 void DetachedFunction::operator delete(void *o, size_t /*siz*/) {
-  std::lock_guard<std::mutex> lock(*accesslock);
+  // std::lock_guard<std::mutex> lock(*accesslock);
   getpool().free(reinterpret_cast<DetachedFunction *>(o));
 }

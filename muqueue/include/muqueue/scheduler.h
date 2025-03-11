@@ -199,26 +199,26 @@ struct TaskScheduler {
 };
 
 template <typename T>
-void post_function(const std::function<T()> &f, int prio = 0) {
+bool post_function(const std::function<T()> &f, int prio = 0) {
 #ifdef DETACHED_SHARED_PTR
   DetachedFunctionBasePtr t = std::make_shared<DetachedFunction>(f);
 #else
   DetachedFunctionBasePtr t = new DetachedFunction(f);
 #endif
-  TaskScheduler::enqueue(t, prio);
-  return;
+  return TaskScheduler::enqueue(t, prio);
+  // return;
 }
 
 template <typename Ret, typename... Args>
-void post_function2(const std::function<Ret(Args...)> &f, Args... args) {
+bool post_function2(const std::function<Ret(Args...)> &f, Args... args) {
 #ifdef DETACHED_SHARED_PTR
   DetachedFunctionBasePtr t =
       std::make_shared<DetachedFunction2<Ret, Args...>>(f, args...);
 #else
   DetachedFunctionBasePtr t = new DetachedFunction2<Ret, Args...>(f, args...);
 #endif
-  TaskScheduler::enqueue(t);
-  return;
+  return TaskScheduler::enqueue(t);
+  // return;
 }
 
 }  // namespace fflow

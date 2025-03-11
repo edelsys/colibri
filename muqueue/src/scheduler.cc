@@ -125,24 +125,39 @@ const boost::circular_buffer<DetachedFunctionBasePtr> &WQueue::getbuf() const {
 void WQueue::worker() {
   running = true;
 
+  int batchsize = 20;
+
   for (; running.load();) {
     heartbeat0++;  // update heartbeat
+    // std::cerr << '.';
 
-    DetachedFunctionBasePtr bs;
-    {
-      std::unique_lock<std::mutex> lock(accesslock);
-      if (wqueue.empty()) {
-        cnotify.wait_for(lock, std::chrono::duration<int, std::milli>(5));
-        continue;
-      }
+    DetachedFunctionBasePtr bs[batchsize];
+    int totcnt = 0;
+    bool notify = false;
 
-      bs = std::move(wqueue.front());
-      wqueue.pop_front();  // remove from queue
+    if (accesslock.try_lock()) {
+      // std::lock_guard<std::mutex> lock(accesslock);
+      totcnt = wqueue.size();
+      if (totcnt > batchsize) totcnt = batchsize;
+      for (int i = 0; i < totcnt; i++) bs[i] = std::move(wqueue.at(i));
+
+      wqueue.erase_begin(totcnt);  // remove from queue
+      notify = wqueue.empty();
+      accesslock.unlock();
     }
 
-    bs->eval();  // execute function
+    for (int i = 0; i < totcnt; i++) bs[i]->eval();  // execute function
 
+    {
+      if (notify) {
+        std::unique_lock<std::mutex> lock(accesslock);
+        cnotify.wait_for(lock, std::chrono::duration<int, std::milli>(1));
+        // cnotify.notify_one();
+        continue;
+      }
+    }
 #ifndef DETACHED_SHARED_PTR
+#error "Check the 'bs' variable"
     delete bs;  // clean
 #endif
   }
@@ -151,9 +166,13 @@ void WQueue::worker() {
 }
 
 bool WQueue::enqueue(DetachedFunctionBasePtr t) {
-  std::lock_guard<std::mutex> lock(accesslock);
-  bool ret = wqueue.full();
-  wqueue.push_back(t);
-  cnotify.notify_one();
-  return ret;
+  // std::lock_guard<std::mutex> lock(accesslock);
+  bool locked = accesslock.try_lock();
+  if (locked) {
+    //  wqueue.full();
+    wqueue.push_back(t);
+    cnotify.notify_one();
+    accesslock.unlock();
+  }
+  return locked;
 }

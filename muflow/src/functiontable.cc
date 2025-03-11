@@ -29,11 +29,11 @@
 
 #include "muflow/functiontable.h"
 
-#include <iostream>
-#include <map>
-
 #include <muqueue/muqueue.h>
 #include <muqueue/scheduler.h>
+
+#include <iostream>
+#include <map>
 
 #include "muflow/muflow.h"
 

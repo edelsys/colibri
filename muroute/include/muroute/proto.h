@@ -168,6 +168,7 @@ typedef struct __native_addr_t {
 #include <functional>
 #include <list>
 #include <set>
+#include <string>
 #include <thread>
 #include <unordered_set>
 #include <vector>
@@ -210,7 +211,7 @@ using namespace proto;
 
 class AbstractEdgeInterface {
  public:
-  typedef std::function<int(uint32_t, std::vector<uint8_t> &,
+  typedef std::function<int(uint32_t, const std::vector<uint8_t> &,
                             const native_addr_t &)>
       recv_cb_func_t;  // receive callbck function type
 

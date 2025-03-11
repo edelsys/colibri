@@ -37,8 +37,8 @@
 
 #include "mutelemetry/mutelemetry_ulog.h"
 
-//#define RELAXED_STATE_MACHINE
-//#define KEEP_DATA
+// #define RELAXED_STATE_MACHINE
+// #define KEEP_DATA
 
 using namespace std;
 using namespace mutelemetry_ulog;

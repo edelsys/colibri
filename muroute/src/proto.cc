@@ -31,6 +31,8 @@
 
 #include <glog/logging.h>
 
+#include "muqueue/scheduler.h"
+
 namespace fflow {
 AbstractEdgeInterface::AbstractEdgeInterface() : recv_cb(nullptr) {}
 
@@ -55,10 +57,19 @@ LoopBackInterface::LoopBackInterface() {
     return;
   }
 
-  native_addr_t naddr;
-  naddr.typ = FLOWADDR_UNICAST;
   if (recv_cb) {
-    recv_cb(edge_id, msg, naddr);
+    // copy message
+    const std::vector<uint8_t> msgcopy = msg;
+    uint32_t edge_id_ = edge_id;
+    recv_cb_func_t recv_cb_ = recv_cb;
+    native_addr_t naddr;
+    naddr.typ = FLOWADDR_UNICAST;
+
+    // bool res = fflow::post_function<void>(
+    //     [this, msgcopy, edge_id_, naddr](void) -> void {
+    recv_cb(edge_id_, msgcopy, naddr);
+    // },
+    // 0);
   }
 }
 

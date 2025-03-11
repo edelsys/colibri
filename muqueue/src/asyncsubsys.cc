@@ -28,6 +28,7 @@
  */
 
 #include "muqueue/asyncsubsys.h"
+
 #include "muqueue/scheduler.h"
 
 using namespace fflow;

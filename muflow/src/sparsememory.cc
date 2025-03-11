@@ -96,8 +96,8 @@ std::forward_list<tArg> SparseMemory::renderToHyperSpace(
   return std::forward_list<tArg>();
 }
 
-const std::unordered_map<uint32_t, Vertex::VertexSPtr>
-    &SparseMemory::getVertices() const {
+const std::unordered_map<uint32_t, Vertex::VertexSPtr> &
+SparseMemory::getVertices() const {
   return vertices;
 }
 
