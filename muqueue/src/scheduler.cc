@@ -111,14 +111,16 @@ TaskScheduler::~TaskScheduler() {
   return instptr;
 }
 
-WQueue::WQueue() { wqueue.set_capacity(400); }
+WQueue::WQueue() {
+  // wqueue.set_capacity(400);
+}
 
 /*virtual*/ WQueue::~WQueue() {
   running = false;
   th->join();
 }
 
-const boost::circular_buffer<DetachedFunctionBasePtr> &WQueue::getbuf() const {
+const std::queue<DetachedFunctionBasePtr> &WQueue::getbuf() const {
   return wqueue;
 }
 
@@ -138,9 +140,12 @@ void WQueue::worker() {
       // std::lock_guard<std::mutex> lock(accesslock);
       totcnt = wqueue.size();
       if (totcnt > batchsize) totcnt = batchsize;
-      for (int i = 0; i < totcnt; i++) bs[i] = std::move(wqueue.at(i));
 
-      wqueue.erase_begin(totcnt);  // remove from queue
+      for (int i = 0; i < totcnt; i++) {
+        bs[i] = std::move(wqueue.front());
+        wqueue.pop();
+      }
+
       notify = wqueue.empty();
       accesslock.unlock();
     }
@@ -165,13 +170,18 @@ void WQueue::worker() {
 }
 
 bool WQueue::enqueue(DetachedFunctionBasePtr t) {
-  // std::lock_guard<std::mutex> lock(accesslock);
-  bool locked = accesslock.try_lock();
-  if (locked) {
-    //  wqueue.full();
-    wqueue.push_back(t);
-    cnotify.notify_one();
-    accesslock.unlock();
-  }
-  return locked;
+  std::lock_guard<std::mutex> lock(accesslock);
+  // bool locked = accesslock.try_lock();
+
+  // if (locked) {
+  wqueue.push(t);
+  cnotify.notify_one();
+  // accesslock.unlock();
+  // if (wqueue.full())
+  //   std::cout << "Queue is full " << wqueue.size() << "\n";
+  // } else {
+  // std::cout << "Queue locked " << wqueue.size() << "\n";
+  // }
+  // return locked;
+  return true;
 }

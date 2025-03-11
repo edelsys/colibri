@@ -60,10 +60,10 @@ class WQueue {
   std::condition_variable cnotify;  ///< condition variable
   std::shared_ptr<std::thread> th;  ///< worker thread
 
-  boost::circular_buffer<DetachedFunctionBasePtr>
-      wqueue;  ///< workqueue itself (curcular buffer)
-  // std::queue<DetachedFunctionBasePtr>
+  // boost::circular_buffer<DetachedFunctionBasePtr>
   //     wqueue;  ///< workqueue itself (curcular buffer)
+  std::queue<DetachedFunctionBasePtr>
+      wqueue;  ///< workqueue itself (curcular buffer)
 
   // noncopyable
   WQueue(const WQueue &) = delete;
@@ -71,7 +71,7 @@ class WQueue {
 
  protected:
   bool setsize(size_t size) {
-    wqueue.set_capacity(size);
+    // wqueue.set_capacity(size);
     return true;  /// @bug
   }
 
@@ -89,10 +89,10 @@ class WQueue {
 
   void worker();
 
-  size_t getsize() { return wqueue.capacity(); }
-  // size_t getsize() { return wqueue.size(); }
+  // size_t getsize() { return wqueue.capacity(); }
+  size_t getsize() { return wqueue.size(); }
 
-  const boost::circular_buffer<DetachedFunctionBasePtr> &getbuf() const;
+  const std::queue<DetachedFunctionBasePtr> &getbuf() const;
 };
 
 struct TaskScheduler {
