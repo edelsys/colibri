@@ -35,6 +35,7 @@
 #include <functional>
 #include <future>
 #include <mutex>
+#include <queue>
 #include <set>
 #include <vector>
 
@@ -59,8 +60,10 @@ class WQueue {
   std::condition_variable cnotify;  ///< condition variable
   std::shared_ptr<std::thread> th;  ///< worker thread
 
-  boost::circular_buffer<DetachedFunctionBasePtr>
-      wqueue;  ///< workqueu itself (curcular buffer)
+  // boost::circular_buffer<DetachedFunctionBasePtr>
+  //     wqueue;  ///< workqueue itself (curcular buffer)
+  std::queue<DetachedFunctionBasePtr>
+      wqueue;  ///< workqueue itself (curcular buffer)
 
   // noncopyable
   WQueue(const WQueue &) = delete;
@@ -68,7 +71,7 @@ class WQueue {
 
  protected:
   bool setsize(size_t size) {
-    wqueue.set_capacity(size);
+    // wqueue.set_capacity(size);
     return true;  /// @bug
   }
 
@@ -86,9 +89,10 @@ class WQueue {
 
   void worker();
 
-  size_t getsize() { return wqueue.capacity(); }
+  // size_t getsize() { return wqueue.capacity(); }
+  size_t getsize() { return wqueue.size(); }
 
-  const boost::circular_buffer<DetachedFunctionBasePtr> &getbuf() const;
+  const std::queue<DetachedFunctionBasePtr> &getbuf() const;
 };
 
 struct TaskScheduler {
@@ -157,10 +161,10 @@ struct TaskScheduler {
     instance()->queues.size();
     for (const auto &queue : instance()->queues) {
       __UNUSED__ auto cbuf = queue->getbuf();
-      __UNUSED__ size_t cap = cbuf.capacity();
+      // __UNUSED__ size_t cap = cbuf.capacity();
       __UNUSED__ size_t siz = cbuf.size();
-      __UNUSED__ size_t max = cbuf.max_size();
-      __UNUSED__ bool full = cbuf.full();
+      // __UNUSED__ size_t max = cbuf.max_size();
+      // __UNUSED__ bool full = cbuf.full();
     }
   }
 

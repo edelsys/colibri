@@ -209,8 +209,20 @@ struct __muflow_packet__ {
 namespace fflow {
 using namespace proto;
 
+template <typename type>
+bool vector_contains(std::vector<type> vect, type elem) {
+  // return std::find(vect.begin(), vect.end(), elem) != vect.end();
+  return (false);
+}
+
 class AbstractEdgeInterface {
  public:
+  enum class AcceptState {
+    Accepted = 1,
+    Filtered,
+    Rejected,
+  };
+
   typedef std::function<int(uint32_t, const std::vector<uint8_t> &,
                             const native_addr_t &)>
       recv_cb_func_t;  // receive callbck function type
@@ -233,6 +245,29 @@ class AbstractEdgeInterface {
     recv_cb = f;
     return true;
   }
+
+  AcceptState accept_msg(std::vector<uint8_t> &msg) const;
+
+  bool allowed_by_dedup(std::vector<uint8_t> &msg) const;
+
+  bool allowed_by_incoming_filters(std::vector<uint8_t> &msg) const;
+
+ private:
+  /**
+   * Copy from 'mavlink-router' project
+   */
+  std::vector<uint32_t> _allowed_outgoing_msg_ids;
+  std::vector<uint32_t> _blocked_outgoing_msg_ids;
+  std::vector<uint8_t> _allowed_outgoing_src_comps;
+  std::vector<uint8_t> _blocked_outgoing_src_comps;
+  std::vector<uint8_t> _allowed_outgoing_src_systems;
+  std::vector<uint8_t> _blocked_outgoing_src_systems;
+  std::vector<uint32_t> _allowed_incoming_msg_ids;
+  std::vector<uint32_t> _blocked_incoming_msg_ids;
+  std::vector<uint8_t> _allowed_incoming_src_comps;
+  std::vector<uint8_t> _blocked_incoming_src_comps;
+  std::vector<uint8_t> _allowed_incoming_src_systems;
+  std::vector<uint8_t> _blocked_incoming_src_systems;
 };
 
 class LoopBackInterface : public AbstractEdgeInterface {

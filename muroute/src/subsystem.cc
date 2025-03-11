@@ -256,7 +256,6 @@ void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
   unordered_map<uint64_t, route_row_t>::iterator route;
   {
     // lock_guard<mutex> lock(routelock);
-
     route = route_table.find(fromaddr64);
 
     if (route != route_table.end()) {
@@ -362,6 +361,8 @@ void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
             &msg, srcAddr.group_id, srcAddr.instance_id, edgei->edge_id, lmin,
             msg.len, crc_extra);
 
+      // if (edgei->accept_msg(rawbuf) ==
+      //     AbstractEdgeInterface::AcceptState::Accepted) {
       // serialize into raw buffer
       finlen = mavlink_msg_to_send_buffer(&rawbuf[0], &msg);
 
@@ -371,6 +372,7 @@ void RouteSystem::__send(mavlink_message_t &msg, const SparseAddress &srcAddr,
       rawbuf.resize(finlen);
 
       edgei->sendtoraw(rawbuf, na, srcna, src_edge_id);
+      // }
     }
 }
 
